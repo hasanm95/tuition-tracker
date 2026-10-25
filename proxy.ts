@@ -1,16 +1,16 @@
 import { withAuth } from 'next-auth/middleware';
 import type { NextRequest, NextFetchEvent } from 'next/server';
 
-// next-auth's withAuth returns a middleware function. Next.js 16 requires this
-// file to export a real function (a bare `export { default } from ...` re-export
-// is no longer accepted), so we wrap it in an explicit function.
-const authMiddleware = withAuth({
+// next-auth's withAuth returns a request handler. Next.js 16 renamed the
+// middleware convention to `proxy` and requires a real exported function, so we
+// wrap withAuth in an explicit proxy function.
+const authProxy = withAuth({
   pages: { signIn: '/signin' }, // redirect unauthenticated visitors here
 });
 
-export default function middleware(req: NextRequest, ev: NextFetchEvent) {
+export default function proxy(req: NextRequest, ev: NextFetchEvent) {
   // The default `authorized` check allows the request only when a token exists.
-  return (authMiddleware as unknown as (r: NextRequest, e: NextFetchEvent) => unknown)(req, ev);
+  return (authProxy as unknown as (r: NextRequest, e: NextFetchEvent) => unknown)(req, ev);
 }
 
 /**

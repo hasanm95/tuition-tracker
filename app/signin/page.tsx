@@ -7,7 +7,6 @@ import { useSearchParams } from 'next/navigation';
 function SignInInner() {
   const params = useSearchParams();
   const error = params.get('error');
-  const denied = error === 'AccessDenied';
 
   return (
     <div className="card center" style={{ marginTop: '22vh' }}>
@@ -25,9 +24,7 @@ function SignInInner() {
 
       {error && (
         <div className="error" style={{ textAlign: 'left', marginTop: 16 }}>
-          {denied
-            ? 'This Google account is not on the access list. Ask the owner to add your email.'
-            : 'Sign-in failed. Please try again.'}
+          Sign-in failed. Please try again.
         </div>
       )}
 
