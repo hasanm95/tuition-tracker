@@ -28,6 +28,8 @@ export default function Dashboard() {
     load();
   }, []);
 
+  const notConnected = !!error && /APPS_SCRIPT|not return JSON|deployment URL/i.test(error);
+
   const totalOutstanding = (students ?? [])
     .filter((s) => s.due > 0)
     .reduce((sum, s) => sum + s.due, 0);
@@ -45,7 +47,23 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {error && (
+      {notConnected && (
+        <div className="card">
+          <div className="step-head">Your data isn&apos;t connected yet</div>
+          <p className="step-body" style={{ marginTop: 0 }}>
+            This app needs to be linked to your own Google Sheet before it can show
+            students. It&apos;s a one-time setup — about 10 minutes.
+          </p>
+          <Link href="/setup" className="btn" style={{ marginTop: 8 }}>
+            Set up my data
+          </Link>
+          <button className="btn ghost" onClick={load} style={{ marginTop: 4 }}>
+            I&apos;ve done this — retry
+          </button>
+        </div>
+      )}
+
+      {error && !notConnected && (
         <div className="error">
           {error} <button className="btn ghost" onClick={load}>Retry</button>
         </div>
@@ -88,9 +106,11 @@ export default function Dashboard() {
         </>
       )}
 
-      <Link href="/students/new" className="btn fab">
-        + Add student
-      </Link>
+      {!notConnected && (
+        <Link href="/students/new" className="btn fab">
+          + Add student
+        </Link>
+      )}
     </>
   );
 }
