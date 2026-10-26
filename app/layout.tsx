@@ -3,6 +3,7 @@ import './globals.css';
 import PWARegister from '@/components/PWARegister';
 import Providers from './providers';
 import UserMenu from '@/components/UserMenu';
+import InstallPrompt from '@/components/InstallPrompt';
 
 export const metadata: Metadata = {
   title: 'Fee Tracker',
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="app">
             <UserMenu />
+            <InstallPrompt />
             {children}
           </div>
         </Providers>

@@ -235,3 +235,19 @@ code.inline {
   border-radius: 10px;
   background: #fff;
 }
+
+.install-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-top: 10px;
+}
+.install-bar .install-text { font-size: 13px; line-height: 1.4; }
+.install-bar .install-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.install-bar .btn { padding: 8px 14px; font-size: 14px; }
