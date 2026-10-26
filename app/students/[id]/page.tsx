@@ -103,7 +103,7 @@ export default function StudentDetailPage() {
 
           <PaymentForm studentId={student.id} />
 
-          <div className="card">
+          <div className="card" style={{marginTop: "10px"}}>
             <h2 style={{ fontSize: 16, margin: '0 0 6px' }}>Payment history</h2>
             {student.payments.length === 0 && <div className="muted">No payments recorded yet.</div>}
             {student.payments.map((p) => (
