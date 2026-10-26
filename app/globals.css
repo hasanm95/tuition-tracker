@@ -225,3 +225,13 @@ code.inline {
   word-break: break-all;
 }
 .valuebox .btn.ghost { width: auto; padding: 4px 0; flex: 0 0 auto; }
+
+.guide-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}

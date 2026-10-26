@@ -71,9 +71,11 @@ export default function SetupPage() {
         <li className="step">
           <div className="step-head">Open the script editor</div>
           <div className="step-body">
-            In that sheet&apos;s menu, click <strong>Extensions → Apps Script</strong>. A
-            code editor opens in a new tab. Delete whatever sample code is shown so the
+            In that sheet&apos;s menu, click <strong>Extensions → Apps Script</strong>.
+            <img className="guide-img" src="/setup/01-extensions.png" alt="The Extensions menu open with Apps Script highlighted" />
+            A code editor opens in a new tab. Delete whatever sample code is shown so the
             file is empty.
+            <img className="guide-img" src="/setup/02-editor.webp" alt="The Apps Script editor showing the default myFunction placeholder to delete" />
           </div>
         </li>
 
@@ -89,6 +91,10 @@ export default function SetupPage() {
                 View it
               </a>
             </div>
+            <img className="guide-img" src="/setup/03-paste-code.webp" alt="The backend code pasted into the editor, with the API_TOKEN line to edit near the top" />
+            <span className="muted" style={{ fontSize: 13 }}>
+              The arrow points at the <code className="inline">API_TOKEN</code> line (line 19) — that&apos;s what you set next.
+            </span>
           </div>
         </li>
 
