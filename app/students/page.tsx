@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { Student } from '@/lib/types';
@@ -10,7 +10,7 @@ import ListSkeleton from '@/components/ListSkeleton';
 import NotConnectedCard from '@/components/NotConnectedCard';
 import { useYear } from '@/app/providers';
 
-export default function StudentsPage() {
+function StudentsInner() {
   const { year } = useYear();
   const searchParams = useSearchParams();
   const classFilter = searchParams.get('class') ?? '';
@@ -134,5 +134,13 @@ export default function StudentsPage() {
         </Link>
       ))}
     </>
+  );
+}
+
+export default function StudentsPage() {
+  return (
+    <Suspense fallback={<ListSkeleton />}>
+      <StudentsInner />
+    </Suspense>
   );
 }
