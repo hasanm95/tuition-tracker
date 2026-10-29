@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Payment } from '@/lib/types';
 import { money } from '@/lib/format';
-import { isNotConnected } from '@/lib/errors';
+import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
-import NotConnectedCard from '@/components/NotConnectedCard';
+import BackendNotice from '@/components/BackendNotice';
 
 export default function DailyPage() {
   const { year } = useYear();
@@ -54,8 +54,8 @@ export default function DailyPage() {
         />
       </div>
 
-      {error && (isNotConnected(error)
-        ? <NotConnectedCard onRetry={() => load(date)} />
+      {error && (isSetupError(error)
+        ? <BackendNotice error={error} onRetry={() => load(date)} />
         : <div className="error">{error}</div>
       )}
 

@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
-import { isNotConnected } from '@/lib/errors';
-import NotConnectedCard from '@/components/NotConnectedCard';
+import { isSetupError } from '@/lib/errors';
+import BackendNotice from '@/components/BackendNotice';
 
 interface Props {
   student?: Student;
@@ -70,8 +70,8 @@ export default function StudentForm({ student }: Props) {
     }
   }
 
-  if (isNotConnected(error)) {
-    return <NotConnectedCard />;
+  if (isSetupError(error)) {
+    return <BackendNotice error={error} />;
   }
 
   return (

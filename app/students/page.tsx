@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { money } from '@/lib/format';
-import { isNotConnected } from '@/lib/errors';
+import { isSetupError } from '@/lib/errors';
 import ListSkeleton from '@/components/ListSkeleton';
-import NotConnectedCard from '@/components/NotConnectedCard';
+import BackendNotice from '@/components/BackendNotice';
 import { useYear } from '@/app/providers';
 
 function StudentsInner() {
@@ -92,8 +92,8 @@ function StudentsInner() {
         </div>
       )}
 
-      {error && (isNotConnected(error)
-        ? <NotConnectedCard onRetry={load} />
+      {error && (isSetupError(error)
+        ? <BackendNotice error={error} onRetry={load} />
         : (
           <div className="error">
             {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>

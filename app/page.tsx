@@ -4,10 +4,10 @@ import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { Student } from '@/lib/types';
 import { money } from '@/lib/format';
-import { isNotConnected } from '@/lib/errors';
+import { isSetupError } from '@/lib/errors';
 import { useYear } from './providers';
 import ListSkeleton from '@/components/ListSkeleton';
-import NotConnectedCard from '@/components/NotConnectedCard';
+import BackendNotice from '@/components/BackendNotice';
 
 export default function Dashboard() {
   const { year } = useYear();
@@ -50,7 +50,7 @@ export default function Dashboard() {
     };
   }, [students]);
 
-  const notConnected = isNotConnected(error);
+  const notConnected = isSetupError(error);
 
   return (
     <>
@@ -64,7 +64,7 @@ export default function Dashboard() {
         <div className="page-sub">নতুন বছরের জন্য ওপর থেকে সাল পরিবর্তন করুন।</div>
       </div>
 
-      {notConnected && <NotConnectedCard onRetry={load} />}
+      {notConnected && <BackendNotice error={error} onRetry={load} />}
 
       {error && !notConnected && (
         <div className="error">

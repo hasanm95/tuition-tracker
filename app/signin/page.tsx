@@ -1,30 +1,29 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
 function SignInInner() {
   const params = useSearchParams();
-  const error = params.get('error');
+  // Read the error only after mount so the server-rendered HTML (which has no
+  // query string during static prerender) matches the first client render.
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    setError(params.get('error'));
+  }, [params]);
 
   return (
     <div className="card center" style={{ marginTop: '22vh' }}>
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 16,
-          background: 'var(--brand)',
-          margin: '0 auto 14px',
-        }}
-      />
-      <h1 style={{ margin: 0, fontSize: 22 }}>Fee Tracker</h1>
-      <p className="muted" style={{ marginTop: 6 }}>Sign in to continue</p>
+      <div style={{ fontSize: 46, lineHeight: 1, marginBottom: 8 }}>🎓</div>
+      <h1 style={{ margin: 0, fontSize: 22, fontFamily: 'var(--font-display)' }}>টিউশন ট্র্যাকার</h1>
+      <p className="muted" style={{ marginTop: 6 }}>চালিয়ে যেতে সাইন ইন করুন</p>
 
       {error && (
         <div className="error" style={{ textAlign: 'left', marginTop: 16 }}>
-          Sign-in failed. Please try again.
+          {error === 'AccessDenied'
+            ? 'এই Google অ্যাকাউন্টটির অ্যাক্সেস নেই। অনুমোদিত অ্যাকাউন্ট দিয়ে সাইন ইন করুন।'
+            : 'সাইন ইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'}
         </div>
       )}
 
@@ -33,7 +32,7 @@ function SignInInner() {
         style={{ marginTop: 18 }}
         onClick={() => signIn('google', { callbackUrl: '/' })}
       >
-        Continue with Google
+        Google দিয়ে সাইন ইন করুন
       </button>
     </div>
   );
@@ -41,7 +40,7 @@ function SignInInner() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="card center" style={{ marginTop: '22vh' }}>Loading…</div>}>
+    <Suspense fallback={<div className="card center" style={{ marginTop: '22vh' }}>লোড হচ্ছে…</div>}>
       <SignInInner />
     </Suspense>
   );

@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { StudentDetail, Payment } from '@/lib/types';
 import { money } from '@/lib/format';
-import { isNotConnected } from '@/lib/errors';
+import { isSetupError } from '@/lib/errors';
 import PaymentForm from '@/components/PaymentForm';
-import NotConnectedCard from '@/components/NotConnectedCard';
+import BackendNotice from '@/components/BackendNotice';
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,8 +54,8 @@ export default function StudentDetailPage() {
         <Link href="/students" className="bc-btn">← তালিকা</Link>
       </div>
 
-      {error && (isNotConnected(error)
-        ? <NotConnectedCard onRetry={load} />
+      {error && (isSetupError(error)
+        ? <BackendNotice error={error} onRetry={load} />
         : (
           <div className="error">
             {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
