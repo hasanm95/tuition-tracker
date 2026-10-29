@@ -86,12 +86,13 @@ export default function Dashboard() {
 
       {classes.length > 0 && (
         <div className="class-grid">
-          {classes.map(({ name, count }) => (
+          {classes.map(({ name, count }, i) => (
             <Link
               key={name}
               href={`/students?class=${encodeURIComponent(name)}&year=${year}`}
             >
-              <div className="class-card">
+              <div className={`class-card accent-${i % 6}`}>
+                <div className="class-avatar">🎓</div>
                 <div className="cn">{name}</div>
                 <div className="cc">{count} জন পড়ছে</div>
               </div>
