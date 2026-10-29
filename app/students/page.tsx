@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { money } from '@/lib/format';
+import { isNotConnected } from '@/lib/errors';
 import ListSkeleton from '@/components/ListSkeleton';
+import NotConnectedCard from '@/components/NotConnectedCard';
 import { useYear } from '@/app/providers';
 
 export default function StudentsPage() {
@@ -90,10 +92,13 @@ export default function StudentsPage() {
         </div>
       )}
 
-      {error && (
-        <div className="error">
-          {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
-        </div>
+      {error && (isNotConnected(error)
+        ? <NotConnectedCard onRetry={load} />
+        : (
+          <div className="error">
+            {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
+          </div>
+        )
       )}
 
       {students === null && !error && <ListSkeleton />}
@@ -128,10 +133,6 @@ export default function StudentsPage() {
           </div>
         </Link>
       ))}
-
-      <Link href="/students/new" className="btn fab">
-        + ভর্তি করুন
-      </Link>
     </>
   );
 }

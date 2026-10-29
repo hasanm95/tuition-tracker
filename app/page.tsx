@@ -3,8 +3,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import type { Student } from '@/lib/types';
+import { money } from '@/lib/format';
+import { isNotConnected } from '@/lib/errors';
 import { useYear } from './providers';
 import ListSkeleton from '@/components/ListSkeleton';
+import NotConnectedCard from '@/components/NotConnectedCard';
 
 export default function Dashboard() {
   const { year } = useYear();
@@ -38,8 +41,16 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, count]) => ({ name, count }));
   }, [students]);
 
-  const notConnected =
-    !!error && /APPS_SCRIPT|not return JSON|deployment URL/i.test(error);
+  const summary = useMemo(() => {
+    const list = students ?? [];
+    return {
+      count: list.length,
+      paid: list.reduce((sum, s) => sum + (s.totalPaid || 0), 0),
+      due: list.reduce((sum, s) => sum + Math.max(0, s.due || 0), 0),
+    };
+  }, [students]);
+
+  const notConnected = isNotConnected(error);
 
   return (
     <>
@@ -53,21 +64,7 @@ export default function Dashboard() {
         <div className="page-sub">নতুন বছরের জন্য ওপর থেকে সাল পরিবর্তন করুন।</div>
       </div>
 
-      {notConnected && (
-        <div className="card">
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>ডেটা সংযুক্ত নেই</div>
-          <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--muted)' }}>
-            এই অ্যাপটি ব্যবহার করতে প্রথমে আপনার Google Sheet সংযুক্ত করুন।
-            একবারের সেটআপ — প্রায় ১০ মিনিট।
-          </p>
-          <Link href="/setup" className="btn">
-            ডেটা সেটআপ করুন
-          </Link>
-          <button className="btn" style={{ marginTop: 8, background: 'transparent', color: 'var(--brand)', border: '1px solid var(--border)' }} onClick={load}>
-            সেটআপ হয়ে গেছে — আবার চেষ্টা করুন
-          </button>
-        </div>
-      )}
+      {notConnected && <NotConnectedCard onRetry={load} />}
 
       {error && !notConnected && (
         <div className="error">
@@ -81,6 +78,23 @@ export default function Dashboard() {
       {students !== null && classes.length === 0 && (
         <div className="card center muted">
           {year} সালে কোনো শিক্ষার্থী নেই। &quot;ভর্তি&quot; বোতামে ক্লিক করে যোগ করুন।
+        </div>
+      )}
+
+      {classes.length > 0 && (
+        <div className="home-summary">
+          <div className="sum-tile students">
+            <div className="st-v">{summary.count}</div>
+            <div className="st-k">মোট শিক্ষার্থী</div>
+          </div>
+          <div className="sum-tile paid">
+            <div className="st-v">{money(summary.paid)}</div>
+            <div className="st-k">মোট জমা</div>
+          </div>
+          <div className="sum-tile due">
+            <div className="st-v">{money(summary.due)}</div>
+            <div className="st-k">মোট বেকেয়া</div>
+          </div>
         </div>
       )}
 

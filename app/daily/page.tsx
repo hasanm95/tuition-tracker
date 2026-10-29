@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Payment } from '@/lib/types';
 import { money } from '@/lib/format';
+import { isNotConnected } from '@/lib/errors';
 import { useYear } from '@/app/providers';
+import NotConnectedCard from '@/components/NotConnectedCard';
 
 export default function DailyPage() {
   const { year } = useYear();
@@ -52,7 +54,10 @@ export default function DailyPage() {
         />
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (isNotConnected(error)
+        ? <NotConnectedCard onRetry={() => load(date)} />
+        : <div className="error">{error}</div>
+      )}
 
       {loading && (
         <div className="card">

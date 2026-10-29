@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
+import { isNotConnected } from '@/lib/errors';
+import NotConnectedCard from '@/components/NotConnectedCard';
 
 interface Props {
   student?: Student;
@@ -66,6 +68,10 @@ export default function StudentForm({ student }: Props) {
       setError(err.message);
       setSaving(false);
     }
+  }
+
+  if (isNotConnected(error)) {
+    return <NotConnectedCard />;
   }
 
   return (
