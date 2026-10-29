@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import type { StudentDetail } from '@/lib/types';
-import { money, dueLabel } from '@/lib/format';
+import { useParams, useRouter } from 'next/navigation';
+import type { StudentDetail, Payment } from '@/lib/types';
+import { money } from '@/lib/format';
 import PaymentForm from '@/components/PaymentForm';
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
 
   async function load() {
     setError(null);
@@ -18,7 +20,7 @@ export default function StudentDetailPage() {
       const res = await fetch(`/api/students/${id}`, { cache: 'no-store' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Could not load student.');
+        throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
       }
       setStudent(await res.json());
     } catch (err: any) {
@@ -26,95 +28,139 @@ export default function StudentDetailPage() {
     }
   }
 
-  useEffect(() => {
-    load();
-    // Re-fetch when a payment is recorded (router.refresh re-runs this on focus).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  useEffect(() => { load(); }, [id]);
+
+  async function deletePayment(p: Payment) {
+    if (!confirm(`${p.paidOn} তারিখের ${money(p.amount)} পেমেন্ট মুছে ফেলবেন?`)) return;
+    setDeletingPayment(p.id);
+    try {
+      const res = await fetch(`/api/payments/${p.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('মুছতে ব্যর্থ হয়েছে।');
+      await load();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDeletingPayment(null);
+    }
+  }
 
   return (
     <>
-      <div className="topbar">
-        <Link href="/" className="btn ghost">
-          ‹ Back
-        </Link>
-        {student && (
-          <Link href={`/students/${id}/edit`} className="btn ghost">
-            Edit
-          </Link>
-        )}
+      <div className="breadcrumbs" style={{ marginTop: 14 }}>
+        <Link href="/" className="bc-btn">🏠 হোম</Link>
+        <span style={{ color: 'var(--muted)', fontSize: 14 }}>›</span>
+        <Link href="/students" className="bc-btn">← তালিকা</Link>
       </div>
 
       {error && (
         <div className="error">
-          {error} <button className="btn ghost" onClick={load}>Retry</button>
+          {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
         </div>
       )}
 
       {!student && !error && (
         <div className="card">
-          <div className="skeleton" style={{ height: 34, width: '50%', margin: '0 auto' }} />
-          <div className="skeleton" style={{ height: 14, width: '30%', margin: '12px auto 0' }} />
+          <div className="skeleton" style={{ height: 28, width: '50%' }} />
+          <div className="skeleton" style={{ height: 14, width: '70%', marginTop: 10 }} />
+          <div className="skeleton" style={{ height: 14, width: '40%', marginTop: 8 }} />
         </div>
       )}
 
       {student && (
         <>
-          <div className="card">
-            <h1 style={{ margin: 0, fontSize: 22 }}>{student.name}</h1>
-            <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-              {[student.class && `Class ${student.class}`, student.roll && `Roll ${student.roll}`]
-                .filter(Boolean)
-                .join(' · ') || 'No class info'}
-            </div>
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <Link href={`/students/${id}/edit`} className="bc-btn" style={{ flex: 1, justifyContent: 'center' }}>
+              ✏️ তথ্য এডিট
+            </Link>
+            <button className="bc-btn" style={{ flex: 1, justifyContent: 'center', color: 'var(--muted)' }}>
+              অব্যাহতি দিন
+            </button>
+            <button
+              className="bc-btn"
+              style={{ flex: 1, justifyContent: 'center', color: 'var(--danger)', borderColor: 'var(--danger-bg)' }}
+              onClick={() => {
+                if (confirm(`"${student.name}" কে মুছে ফেলবেন? এটি পূর্বাবস্থায় ফেরানো যাবে না।`)) {
+                  alert('শিক্ষার্থী মুছার ফিচার শীঘ্রই আসছে।');
+                }
+              }}
+            >
+              🗑️ ডিলিট
+            </button>
+          </div>
 
-            <div className="due-hero">
-              <div className={`amount ${student.due > 0 ? 'owed' : 'clear'}`}>{money(student.due)}</div>
-              <div className="label">{dueLabel(student.due)}</div>
-            </div>
-
-            <div className="detail-grid">
-              <div>
-                <div className="k">Monthly fee</div>
-                <div className="v">{money(student.monthlyFee)}</div>
-              </div>
-              <div>
-                <div className="k">Months billed</div>
-                <div className="v">{student.monthsBilled}</div>
-              </div>
-              <div>
-                <div className="k">Total paid</div>
-                <div className="v">{money(student.totalPaid)}</div>
-              </div>
-              <div>
-                <div className="k">Start date</div>
-                <div className="v">{student.startDate || '—'}</div>
-              </div>
-              {student.guardianPhone && (
-                <div>
-                  <div className="k">Guardian</div>
-                  <div className="v">
-                    <a href={`tel:${student.guardianPhone}`}>{student.guardianPhone}</a>
-                  </div>
-                </div>
+          {/* Student Header */}
+          <div className="student-header-card">
+            <div className="student-name">{student.name}</div>
+            <div className="student-tags">
+              <span className="student-tag">
+                {student.class}
+                {student.section ? ` | শাখা: ${student.section}` : ''}
+                {student.roll ? ` | রোল: ${student.roll}` : ''}
+                {student.monthlyFee ? ` | ফি: ৳${student.monthlyFee}` : ''}
+              </span>
+              <span className={`badge ${student.status === 'active' ? 'active' : 'inactive'}`}>
+                {student.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+              </span>
+              {student.academicYear && (
+                <span className="badge year">{student.academicYear} শিক্ষাবর্ষ</span>
               )}
+            </div>
+
+            {student.guardianPhone && (
+              <>
+                <a href={`tel:${student.guardianPhone}`} className="phone-btn">
+                  📞 {student.guardianPhone}
+                </a>
+                <div className="phone-hint">ℹ️ নাম্বারে ট্যাপ করলে সরাসরি কল যাবে।</div>
+              </>
+            )}
+
+            <div className="stat-grid">
+              <div className="stat-box">
+                <div className="sk">প্রাইভেট শুরু</div>
+                <div className="sv" style={{ fontSize: 14 }}>{student.startDate || '—'}</div>
+              </div>
+              <div className={`stat-box ${student.totalPaid > 0 ? 'ok' : ''}`}>
+                <div className="sk">মোট জমা দিয়েছে</div>
+                <div className="sv">{money(student.totalPaid)}</div>
+              </div>
+              <div className={`stat-box ${student.due > 0 ? 'bad' : 'ok'}`}>
+                <div className="sk">মোট বেকেয়া আছে</div>
+                <div className="sv">{money(Math.max(0, student.due))}</div>
+              </div>
             </div>
           </div>
 
-          <PaymentForm studentId={student.id} />
+          {/* Payment form */}
+          <PaymentForm studentId={student.id} onSuccess={load} />
 
-          <div className="card" style={{marginTop: "10px"}}>
-            <h2 style={{ fontSize: 16, margin: '0 0 6px' }}>Payment history</h2>
-            {student.payments.length === 0 && <div className="muted">No payments recorded yet.</div>}
-            {student.payments.map((p) => (
-              <div className="pay-row" key={p.id}>
+          {/* Payment history */}
+          <div className="card" style={{ marginTop: 10 }}>
+            <div className="pay-section-title">
+              💵 পূর্বে টাকা জমার হিস্ট্রি (ভুল হলে এডিট/ডিলিট করুন):
+            </div>
+            {student.payments.length === 0 && (
+              <div className="muted" style={{ fontSize: 14 }}>এখনো কোনো পেমেন্ট নেই।</div>
+            )}
+            {student.payments.map((p, i) => (
+              <div key={p.id ?? i} className="pay-row">
                 <div>
-                  <div className="amt">{money(p.amount)}</div>
-                  {(p.method || p.note) && (
-                    <div className="date">{[p.method, p.note].filter(Boolean).join(' · ')}</div>
-                  )}
+                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>#{i + 1} &nbsp; {p.paidOn}</div>
                 </div>
-                <div className="date">{p.paidOn}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span className="amt" style={{ color: 'var(--ok)' }}>{money(p.amount)}</span>
+                  <div className="pay-actions">
+                    <button
+                      className="icon-btn del"
+                      disabled={deletingPayment === p.id}
+                      onClick={() => deletePayment(p)}
+                      title="মুছুন"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

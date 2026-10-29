@@ -1,28 +1,23 @@
 /**
  * Private Tutoring Student Tracker — Google Apps Script backend.
  *
- * This is the shared JSON API for the web/PWA app. Paste it into the Apps Script
- * project bound to the Google Sheet (Extensions -> Apps Script), set API_TOKEN
- * below, then Deploy -> New deployment -> Web app:
- *   - Execute as: Me
- *   - Who has access: Anyone      (security comes from the token, not this setting)
+ * Paste into the Apps Script project bound to your Google Sheet
+ * (Extensions -> Apps Script), set API_TOKEN below, then
+ * Deploy -> New deployment -> Web app (Execute as: Me, Access: Anyone).
  *
- * After ANY edit here: Deploy -> Manage deployments -> edit the existing
- * deployment -> Version: "New version". That keeps the same /exec URL.
- *
- * Run setup() once from the editor to create the tabs with headers.
+ * After ANY edit: Deploy -> Manage deployments -> edit -> Version: New version.
+ * Run setup() once from the editor to create the tabs.
  */
 
 // ---- CONFIG ---------------------------------------------------------------
 
-// Must EXACTLY match APPS_SCRIPT_TOKEN in the web app's .env.local.
 var API_TOKEN = 'change-me-to-a-long-random-string';
-
-// How partial months are billed. 'up' counts the current (in-progress) month
-// as owed. Change to 'down' to only bill fully-elapsed months.
 var MONTH_ROUNDING = 'up';
 
-var STUDENT_HEADERS = ['id', 'name', 'roll', 'class', 'guardianPhone', 'monthlyFee', 'startDate', 'createdAt'];
+var STUDENT_HEADERS = [
+  'id', 'name', 'roll', 'class', 'section', 'status',
+  'guardianPhone', 'monthlyFee', 'startDate', 'createdAt', 'academicYear'
+];
 var PAYMENT_HEADERS = ['id', 'studentId', 'amount', 'paidOn', 'method', 'note'];
 
 // ---- ROUTING --------------------------------------------------------------
@@ -48,12 +43,15 @@ function handle(e, action, data) {
   }
   try {
     switch (action) {
-      case 'listStudents': return json({ ok: true, students: listStudents() });
-      case 'getStudent':   return json({ ok: true, student: getStudent(data.id) });
-      case 'addStudent':   return json({ ok: true, student: addStudent(data) });
-      case 'updateStudent':return json({ ok: true, student: updateStudent(data) });
-      case 'addPayment':   return json({ ok: true, payment: addPayment(data) });
-      default:             return json({ ok: false, error: 'Unknown action: ' + action });
+      case 'listStudents':   return json({ ok: true, students: listStudents(data) });
+      case 'getStudent':     return json({ ok: true, student: getStudent(data.id) });
+      case 'addStudent':     return json({ ok: true, student: addStudent(data) });
+      case 'updateStudent':  return json({ ok: true, student: updateStudent(data) });
+      case 'listPayments':   return json({ ok: true, payments: listPayments(data) });
+      case 'addPayment':     return json({ ok: true, payment: addPayment(data) });
+      case 'updatePayment':  return json({ ok: true, payment: updatePayment(data) });
+      case 'deletePayment':  return json({ ok: true, deleted: deletePayment(data.id) });
+      default:               return json({ ok: false, error: 'Unknown action: ' + action });
     }
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -62,13 +60,15 @@ function handle(e, action, data) {
 
 // ---- HANDLERS -------------------------------------------------------------
 
-function listStudents() {
+function listStudents(data) {
   var students = readTab('Students', STUDENT_HEADERS);
   var payments = readTab('Payments', PAYMENT_HEADERS);
   var paidByStudent = sumPayments(payments);
-  return students
-    .map(function (s) { return withDue(s, paidByStudent[s.id] || 0); })
-    .sort(function (a, b) { return b.due - a.due; }); // highest due first
+  var result = students.map(function(s) { return withDue(s, paidByStudent[s.id] || 0); });
+  if (data && data.year) {
+    result = result.filter(function(s) { return String(s.academicYear) === String(data.year); });
+  }
+  return result.sort(function(a, b) { return b.due - a.due; });
 }
 
 function getStudent(id) {
@@ -76,9 +76,9 @@ function getStudent(id) {
   var student = find(students, id);
   if (!student) throw 'Student not found';
   var payments = readTab('Payments', PAYMENT_HEADERS)
-    .filter(function (p) { return String(p.studentId) === String(id); })
-    .sort(function (a, b) { return String(b.paidOn).localeCompare(String(a.paidOn)); });
-  var totalPaid = payments.reduce(function (sum, p) { return sum + Number(p.amount || 0); }, 0);
+    .filter(function(p) { return String(p.studentId) === String(id); })
+    .sort(function(a, b) { return String(b.paidOn).localeCompare(String(a.paidOn)); });
+  var totalPaid = payments.reduce(function(sum, p) { return sum + Number(p.amount || 0); }, 0);
   var out = withDue(student, totalPaid);
   out.payments = payments;
   return out;
@@ -86,18 +86,22 @@ function getStudent(id) {
 
 function addStudent(data) {
   var sheet = tab('Students', STUDENT_HEADERS);
+  var startDate = String(data.startDate || '').trim();
   var row = {
     id: uuid(),
     name: String(data.name || '').trim(),
     roll: String(data.roll || '').trim(),
     'class': String(data['class'] || '').trim(),
+    section: String(data.section || '').trim(),
+    status: String(data.status || 'active').trim(),
     guardianPhone: String(data.guardianPhone || '').trim(),
     monthlyFee: Number(data.monthlyFee || 0),
-    startDate: String(data.startDate || '').trim(),
-    createdAt: new Date().toISOString()
+    startDate: startDate,
+    createdAt: new Date().toISOString(),
+    academicYear: String(data.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear())))
   };
   if (!row.name) throw 'Name is required';
-  sheet.appendRow(STUDENT_HEADERS.map(function (h) { return row[h]; }));
+  sheet.appendRow(STUDENT_HEADERS.map(function(h) { return row[h]; }));
   return withDue(row, 0);
 }
 
@@ -107,22 +111,61 @@ function updateStudent(data) {
   for (var r = 1; r < values.length; r++) {
     if (String(values[r][0]) === String(data.id)) {
       var current = rowToObj(values[r], STUDENT_HEADERS);
+      var startDate = data.startDate != null ? String(data.startDate).trim() : current.startDate;
       var updated = {
         id: current.id,
         name: data.name != null ? String(data.name).trim() : current.name,
         roll: data.roll != null ? String(data.roll).trim() : current.roll,
         'class': data['class'] != null ? String(data['class']).trim() : current['class'],
+        section: data.section != null ? String(data.section).trim() : (current.section || ''),
+        status: data.status != null ? String(data.status).trim() : (current.status || 'active'),
         guardianPhone: data.guardianPhone != null ? String(data.guardianPhone).trim() : current.guardianPhone,
         monthlyFee: data.monthlyFee != null ? Number(data.monthlyFee) : Number(current.monthlyFee || 0),
-        startDate: data.startDate != null ? String(data.startDate).trim() : current.startDate,
-        createdAt: current.createdAt
+        startDate: startDate,
+        createdAt: current.createdAt,
+        academicYear: data.academicYear != null
+          ? String(data.academicYear)
+          : (current.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear())))
       };
       sheet.getRange(r + 1, 1, 1, STUDENT_HEADERS.length)
-        .setValues([STUDENT_HEADERS.map(function (h) { return updated[h]; })]);
+        .setValues([STUDENT_HEADERS.map(function(h) { return updated[h]; })]);
       return getStudent(updated.id);
     }
   }
   throw 'Student not found';
+}
+
+function listPayments(data) {
+  var students = readTab('Students', STUDENT_HEADERS);
+  var studentMap = {};
+  students.forEach(function(s) { studentMap[String(s.id)] = s; });
+
+  var payments = readTab('Payments', PAYMENT_HEADERS);
+  if (data && data.date) {
+    payments = payments.filter(function(p) { return String(p.paidOn) === String(data.date); });
+  }
+  if (data && data.year) {
+    payments = payments.filter(function(p) {
+      var s = studentMap[String(p.studentId)];
+      if (!s) return false;
+      var ay = s.academicYear || (s.startDate ? String(s.startDate).slice(0, 4) : '');
+      return ay === String(data.year);
+    });
+  }
+  return payments.map(function(p) {
+    var s = studentMap[String(p.studentId)] || {};
+    return {
+      id: p.id,
+      studentId: p.studentId,
+      studentName: s.name || '',
+      studentClass: s['class'] || '',
+      studentSection: s.section || '',
+      amount: Number(p.amount || 0),
+      paidOn: p.paidOn,
+      method: p.method || '',
+      note: p.note || ''
+    };
+  }).sort(function(a, b) { return String(b.paidOn).localeCompare(String(a.paidOn)); });
 }
 
 function addPayment(data) {
@@ -138,8 +181,44 @@ function addPayment(data) {
     method: String(data.method || ''),
     note: String(data.note || '')
   };
-  sheet.appendRow(PAYMENT_HEADERS.map(function (h) { return row[h]; }));
+  sheet.appendRow(PAYMENT_HEADERS.map(function(h) { return row[h]; }));
   return row;
+}
+
+function updatePayment(data) {
+  if (!data.id) throw 'id is required';
+  var sheet = tab('Payments', PAYMENT_HEADERS);
+  var values = sheet.getDataRange().getValues();
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][0]) === String(data.id)) {
+      var current = rowToObj(values[r], PAYMENT_HEADERS);
+      var updated = {
+        id: current.id,
+        studentId: current.studentId,
+        amount: data.amount != null ? Number(data.amount) : Number(current.amount),
+        paidOn: data.paidOn != null ? String(data.paidOn) : String(current.paidOn),
+        method: data.method != null ? String(data.method) : String(current.method || ''),
+        note: data.note != null ? String(data.note) : String(current.note || '')
+      };
+      sheet.getRange(r + 1, 1, 1, PAYMENT_HEADERS.length)
+        .setValues([PAYMENT_HEADERS.map(function(h) { return updated[h]; })]);
+      return updated;
+    }
+  }
+  throw 'Payment not found';
+}
+
+function deletePayment(id) {
+  if (!id) throw 'id is required';
+  var sheet = tab('Payments', PAYMENT_HEADERS);
+  var values = sheet.getDataRange().getValues();
+  for (var r = 1; r < values.length; r++) {
+    if (String(values[r][0]) === String(id)) {
+      sheet.deleteRow(r + 1);
+      return true;
+    }
+  }
+  throw 'Payment not found';
 }
 
 // ---- DUE CALCULATION ------------------------------------------------------
@@ -149,11 +228,15 @@ function withDue(student, totalPaid) {
   var billed = monthsBilled(student.startDate);
   var expected = billed * fee;
   var out = {};
-  STUDENT_HEADERS.forEach(function (h) { out[h] = student[h]; });
+  STUDENT_HEADERS.forEach(function(h) { out[h] = student[h]; });
   out.monthlyFee = fee;
   out.monthsBilled = billed;
   out.totalPaid = totalPaid;
-  out.due = expected - totalPaid; // negative means paid in advance
+  out.due = expected - totalPaid;
+  out.status = out.status || 'active';
+  out.section = out.section || '';
+  out.academicYear = out.academicYear ||
+    (student.startDate ? String(student.startDate).slice(0, 4) : String(new Date().getFullYear()));
   return out;
 }
 
@@ -164,7 +247,6 @@ function monthsBilled(startDate) {
   var now = new Date();
   var months = (now.getFullYear() - s.getFullYear()) * 12 + (now.getMonth() - s.getMonth());
   if (months < 0) return 0;
-  // 'up' bills the current month too (start month counts as month 1).
   return MONTH_ROUNDING === 'up' ? months + 1 : months;
 }
 
@@ -193,13 +275,13 @@ function readTab(name, headers) {
 
 function rowToObj(row, headers) {
   var o = {};
-  headers.forEach(function (h, i) { o[h] = row[i]; });
+  headers.forEach(function(h, i) { o[h] = i < row.length ? row[i] : ''; });
   return o;
 }
 
 function sumPayments(payments) {
   var map = {};
-  payments.forEach(function (p) {
+  payments.forEach(function(p) {
     var k = String(p.studentId);
     map[k] = (map[k] || 0) + Number(p.amount || 0);
   });
@@ -223,7 +305,6 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Run once from the editor to create both tabs with headers.
 function setup() {
   tab('Students', STUDENT_HEADERS);
   tab('Payments', PAYMENT_HEADERS);

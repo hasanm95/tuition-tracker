@@ -3,6 +3,8 @@ export interface Student {
   name: string;
   roll: string;
   class: string;
+  section: string;
+  status: string;
   guardianPhone: string;
   monthlyFee: number;
   startDate: string;
@@ -10,11 +12,15 @@ export interface Student {
   monthsBilled: number;
   totalPaid: number;
   due: number;
+  academicYear: string;
 }
 
 export interface Payment {
   id: string;
   studentId: string;
+  studentName?: string;
+  studentClass?: string;
+  studentSection?: string;
   amount: number;
   paidOn: string;
   method: string;
@@ -29,9 +35,12 @@ export interface StudentInput {
   name: string;
   roll?: string;
   class?: string;
+  section?: string;
+  status?: string;
   guardianPhone?: string;
   monthlyFee: number;
   startDate: string;
+  academicYear?: string;
 }
 
 export interface PaymentInput {

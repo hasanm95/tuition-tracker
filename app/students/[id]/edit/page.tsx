@@ -17,7 +17,7 @@ export default function EditStudentPage() {
         const res = await fetch(`/api/students/${id}`, { cache: 'no-store' });
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || 'Could not load student.');
+          throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
         }
         setStudent(await res.json());
       } catch (err: any) {
@@ -28,13 +28,11 @@ export default function EditStudentPage() {
 
   return (
     <>
-      <div className="topbar">
+      <div className="topbar" style={{ marginTop: 14 }}>
         <div>
-          <h1>Edit student</h1>
+          <h1>তথ্য এডিট করুন</h1>
         </div>
-        <Link href={`/students/${id}`} className="btn ghost">
-          Cancel
-        </Link>
+        <Link href={`/students/${id}`} className="btn ghost">বাতিল</Link>
       </div>
 
       {error && <div className="error">{error}</div>}

@@ -1,23 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
-export default function PaymentForm({ studentId }: { studentId: string }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
+interface Props {
+  studentId: string;
+  onSuccess?: () => void;
+}
+
+export default function PaymentForm({ studentId, onSuccess }: Props) {
   const [amount, setAmount] = useState('');
   const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
-  const [method, setMethod] = useState('cash');
-  const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccess(false);
     if (!(Number(amount) > 0)) {
-      setError('Enter an amount greater than 0.');
+      setError('পরিমাণ ০-এর বেশি দিন।');
       return;
     }
     setSaving(true);
@@ -25,16 +27,15 @@ export default function PaymentForm({ studentId }: { studentId: string }) {
       const res = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, amount: Number(amount), paidOn, method, note }),
+        body: JSON.stringify({ studentId, amount: Number(amount), paidOn }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Could not record payment.');
+        throw new Error(data.error || 'পেমেন্ট রেকর্ড করা যায়নি।');
       }
       setAmount('');
-      setNote('');
-      setOpen(false);
-      router.refresh();
+      setSuccess(true);
+      onSuccess?.();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -42,52 +43,46 @@ export default function PaymentForm({ studentId }: { studentId: string }) {
     }
   }
 
-  if (!open) {
-    return (
-      <button className="btn" onClick={() => setOpen(true)}>
-        + Add payment
-      </button>
-    );
-  }
-
   return (
-    <form onSubmit={submit} className="card">
+    <div className="card">
+      <div className="pay-section-title">💵 নতুন ফি জমা নিন</div>
       {error && <div className="error">{error}</div>}
-      <div className="row-gap">
-        <div>
-          <label htmlFor="amount">Amount (৳)</label>
-          <input
-            id="amount"
-            inputMode="numeric"
-            autoFocus
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
-          />
+      {success && (
+        <div style={{ color: 'var(--ok)', background: 'var(--ok-bg)', padding: '10px 14px', borderRadius: 10, marginBottom: 12, fontSize: 14 }}>
+          ✅ পেমেন্ট সফলভাবে রেকর্ড হয়েছে!
         </div>
-        <div>
-          <label htmlFor="paidOn">Paid on</label>
-          <input id="paidOn" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+      )}
+      <form onSubmit={submit}>
+        <div className="row-gap">
+          <div>
+            <label htmlFor="pf-date">জমার তারিখ</label>
+            <input
+              id="pf-date"
+              type="date"
+              value={paidOn}
+              onChange={(e) => setPaidOn(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="pf-amount">টাকার পরিমাণ (৳)</label>
+            <input
+              id="pf-amount"
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="যেমন: ১০০০"
+            />
+          </div>
         </div>
-      </div>
-      <label htmlFor="method">Method</label>
-      <select id="method" value={method} onChange={(e) => setMethod(e.target.value)}>
-        <option value="cash">Cash</option>
-        <option value="bkash">bKash</option>
-        <option value="nagad">Nagad</option>
-        <option value="rocket">Rocket</option>
-        <option value="bank">Bank</option>
-        <option value="other">Other</option>
-      </select>
-      <label htmlFor="note">Note (optional)</label>
-      <input id="note" value={note} onChange={(e) => setNote(e.target.value)} />
-      <div style={{ marginTop: 16 }} className="stack">
-        <button className="btn" type="submit" disabled={saving}>
-          {saving ? 'Saving…' : 'Record payment'}
+        <button
+          className="btn"
+          type="submit"
+          disabled={saving}
+          style={{ marginTop: 14, background: 'var(--ok)' }}
+        >
+          {saving ? 'সেভ হচ্ছে…' : 'জমা নিশ্চিত করুন'}
         </button>
-        <button type="button" className="btn secondary" onClick={() => setOpen(false)} disabled={saving}>
-          Cancel
-        </button>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

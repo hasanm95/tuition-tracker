@@ -2,23 +2,31 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { money } from '@/lib/format';
 import ListSkeleton from '@/components/ListSkeleton';
+import { useYear } from '@/app/providers';
 
 export default function StudentsPage() {
+  const { year } = useYear();
+  const searchParams = useSearchParams();
+  const classFilter = searchParams.get('class') ?? '';
+  const yearParam = searchParams.get('year');
+  const effectiveYear = yearParam ? Number(yearParam) : year;
+
   const [students, setStudents] = useState<Student[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const [cls, setCls] = useState<string>('all');
+  const [cls, setCls] = useState<string>(classFilter || 'all');
 
   async function load() {
     setError(null);
     try {
-      const res = await fetch('/api/students', { cache: 'no-store' });
+      const res = await fetch(`/api/students?year=${effectiveYear}`, { cache: 'no-store' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Could not load students.');
+        throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
       }
       setStudents(await res.json());
     } catch (err: any) {
@@ -28,7 +36,11 @@ export default function StudentsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+  }, [effectiveYear]);
+
+  useEffect(() => {
+    if (classFilter) setCls(classFilter);
+  }, [classFilter]);
 
   const classes = useMemo(() => {
     const set = new Set((students ?? []).map((s) => s.class).filter(Boolean));
@@ -41,38 +53,38 @@ export default function StudentsPage() {
     const matchesQuery =
       !needle ||
       s.name.toLowerCase().includes(needle) ||
-      String(s.roll).toLowerCase().includes(needle) ||
-      String(s.class).toLowerCase().includes(needle);
+      String(s.roll).toLowerCase().includes(needle);
     return matchesClass && matchesQuery;
   });
+
+  const title = classFilter
+    ? `${classFilter} (${effectiveYear} সাল) — শিক্ষার্থী তালিকা`
+    : `সব শিক্ষার্থী (${effectiveYear})`;
 
   return (
     <>
       <div className="topbar">
         <div>
-          <h1>Students</h1>
-          <div className="sub">Search and filter</div>
+          <h1 style={{ fontSize: 16 }}>{title}</h1>
         </div>
-        <Link href="/" className="btn ghost">
-          Dashboard
-        </Link>
+        <Link href="/" className="btn ghost">🏠 হোম</Link>
       </div>
 
       <input
         className="search"
-        placeholder="Search by name, roll, or class"
+        placeholder="নাম বা রোল দিয়ে খুঁজুন"
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
 
-      {classes.length > 0 && (
+      {classes.length > 1 && (
         <div className="chips">
           <button className={`chip ${cls === 'all' ? 'active' : ''}`} onClick={() => setCls('all')}>
-            All
+            সব
           </button>
           {classes.map((c) => (
             <button key={c} className={`chip ${cls === c ? 'active' : ''}`} onClick={() => setCls(c)}>
-              Class {c}
+              {c}
             </button>
           ))}
         </div>
@@ -80,14 +92,14 @@ export default function StudentsPage() {
 
       {error && (
         <div className="error">
-          {error} <button className="btn ghost" onClick={load}>Retry</button>
+          {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
         </div>
       )}
 
       {students === null && !error && <ListSkeleton />}
 
       {students !== null && filtered.length === 0 && (
-        <div className="card center muted">No matching students.</div>
+        <div className="card center muted">কোনো শিক্ষার্থী পাওয়া যায়নি।</div>
       )}
 
       {filtered.map((s) => (
@@ -96,19 +108,29 @@ export default function StudentsPage() {
             <div>
               <div className="name">{s.name}</div>
               <div className="meta">
-                {[s.class && `Class ${s.class}`, s.roll && `Roll ${s.roll}`].filter(Boolean).join(' · ') ||
-                  'No class info'}
+                {[
+                  s.class,
+                  s.section ? `শাখা: ${s.section}` : null,
+                  s.roll ? `রোল: ${s.roll}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' | ')}
               </div>
             </div>
-            <span className={`badge ${s.due > 0 ? 'due' : 'clear'}`}>
-              {s.due > 0 ? money(s.due) : 'Clear'}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <span className={`badge ${s.due > 0 ? 'due' : 'clear'}`}>
+                {s.due > 0 ? money(s.due) : 'পরিষ্কার'}
+              </span>
+              <span className={`badge ${s.status === 'active' ? 'active' : 'inactive'}`} style={{ fontSize: 11, padding: '3px 8px' }}>
+                {s.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+              </span>
+            </div>
           </div>
         </Link>
       ))}
 
       <Link href="/students/new" className="btn fab">
-        + Add student
+        + ভর্তি করুন
       </Link>
     </>
   );
