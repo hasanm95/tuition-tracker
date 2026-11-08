@@ -1,18 +1,18 @@
 export interface Student {
   id: string;
   name: string;
-  roll: string;
   class: string;
   section: string;
-  status: string;
-  guardianPhone: string;
-  monthlyFee: number;
+  roll: string;
   startDate: string;
-  createdAt: string;
-  monthsBilled: number;
+  monthlyFee: number;
+  phone: string;
+  status: string;        // 'সক্রিয়' | 'অব্যাহতি প্রাপ্ত'
+  dischargeDate: string;
+  academicYear: string;
+  isFree: boolean;
   totalPaid: number;
   due: number;
-  academicYear: string;
 }
 
 export interface Payment {
@@ -23,8 +23,9 @@ export interface Payment {
   studentSection?: string;
   amount: number;
   paidOn: string;
-  method: string;
-  note: string;
+  monthName: string;
+  targetFee: number;
+  entryTime: string;
 }
 
 export interface StudentDetail extends Student {
@@ -33,13 +34,13 @@ export interface StudentDetail extends Student {
 
 export interface StudentInput {
   name: string;
-  roll?: string;
   class?: string;
   section?: string;
-  status?: string;
-  guardianPhone?: string;
-  monthlyFee: number;
+  roll?: string;
   startDate: string;
+  monthlyFee: number;
+  phone?: string;
+  status?: string;
   academicYear?: string;
 }
 
@@ -47,6 +48,22 @@ export interface PaymentInput {
   studentId: string;
   amount: number;
   paidOn?: string;
-  method?: string;
-  note?: string;
+  monthName?: string;
+  targetFee?: number;
+}
+
+export interface ExamMark {
+  studentId: string;
+  roll: string;
+  name: string;
+  section: string;
+  isAbsent: boolean;
+  obtainedMarks: number | '';
+  totalMarks: number;
+}
+
+export interface ClassSummary {
+  className: string;
+  active: number;
+  inactive: number;
 }

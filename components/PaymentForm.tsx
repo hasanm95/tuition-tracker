@@ -2,14 +2,20 @@
 
 import { useState } from 'react';
 
+const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+
 interface Props {
   studentId: string;
+  monthlyFee?: number;
   onSuccess?: () => void;
 }
 
-export default function PaymentForm({ studentId, onSuccess }: Props) {
-  const [amount, setAmount] = useState('');
+export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props) {
+  const defaultMonth = BN_MONTHS[new Date().getMonth()];
+  const [amount, setAmount] = useState(monthlyFee ? String(monthlyFee) : '');
   const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [monthName, setMonthName] = useState(defaultMonth);
+  const [targetFee, setTargetFee] = useState(monthlyFee ? String(monthlyFee) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -27,13 +33,19 @@ export default function PaymentForm({ studentId, onSuccess }: Props) {
       const res = await fetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, amount: Number(amount), paidOn }),
+        body: JSON.stringify({
+          studentId,
+          amount: Number(amount),
+          paidOn,
+          monthName,
+          targetFee: Number(targetFee || amount),
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'পেমেন্ট রেকর্ড করা যায়নি।');
       }
-      setAmount('');
+      setAmount(monthlyFee ? String(monthlyFee) : '');
       setSuccess(true);
       onSuccess?.();
     } catch (err: any) {
@@ -55,6 +67,16 @@ export default function PaymentForm({ studentId, onSuccess }: Props) {
       <form onSubmit={submit}>
         <div className="row-gap">
           <div>
+            <label htmlFor="pf-month">মাসের নাম</label>
+            <select
+              id="pf-month"
+              value={monthName}
+              onChange={(e) => setMonthName(e.target.value)}
+            >
+              {BN_MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
             <label htmlFor="pf-date">জমার তারিখ</label>
             <input
               id="pf-date"
@@ -63,13 +85,25 @@ export default function PaymentForm({ studentId, onSuccess }: Props) {
               onChange={(e) => setPaidOn(e.target.value)}
             />
           </div>
+        </div>
+        <div className="row-gap">
           <div>
-            <label htmlFor="pf-amount">টাকার পরিমাণ (৳)</label>
+            <label htmlFor="pf-amount">জমার পরিমাণ (৳)</label>
             <input
               id="pf-amount"
               inputMode="numeric"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="যেমন: ১০০০"
+            />
+          </div>
+          <div>
+            <label htmlFor="pf-target">ধার্য বেতন (৳)</label>
+            <input
+              id="pf-target"
+              inputMode="numeric"
+              value={targetFee}
+              onChange={(e) => setTargetFee(e.target.value.replace(/[^0-9]/g, ''))}
               placeholder="যেমন: ১০০০"
             />
           </div>

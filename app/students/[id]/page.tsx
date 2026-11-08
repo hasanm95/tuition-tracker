@@ -104,18 +104,18 @@ export default function StudentDetailPage() {
                 {student.roll ? ` | রোল: ${student.roll}` : ''}
                 {student.monthlyFee ? ` | ফি: ৳${student.monthlyFee}` : ''}
               </span>
-              <span className={`badge ${student.status === 'active' ? 'active' : 'inactive'}`}>
-                {student.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+              <span className={`badge ${student.status === 'সক্রিয়' ? 'active' : 'inactive'}`}>
+                {student.status}
               </span>
               {student.academicYear && (
                 <span className="badge year">{student.academicYear} শিক্ষাবর্ষ</span>
               )}
             </div>
 
-            {student.guardianPhone && (
+            {student.phone && (
               <>
-                <a href={`tel:${student.guardianPhone}`} className="phone-btn">
-                  📞 {student.guardianPhone}
+                <a href={`tel:${student.phone}`} className="phone-btn">
+                  📞 {student.phone}
                 </a>
                 <div className="phone-hint">ℹ️ নাম্বারে ট্যাপ করলে সরাসরি কল যাবে।</div>
               </>
@@ -138,7 +138,7 @@ export default function StudentDetailPage() {
           </div>
 
           {/* Payment form */}
-          <PaymentForm studentId={student.id} onSuccess={load} />
+          <PaymentForm studentId={student.id} monthlyFee={student.monthlyFee} onSuccess={load} />
 
           {/* Payment history */}
           <div className="card" style={{ marginTop: 10 }}>
@@ -152,6 +152,7 @@ export default function StudentDetailPage() {
               <div key={p.id ?? i} className="pay-row">
                 <div>
                   <div style={{ fontSize: 13, color: 'var(--muted)' }}>#{i + 1} &nbsp; {p.paidOn}</div>
+                  {p.monthName && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.monthName}</div>}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span className="amt" style={{ color: 'var(--ok)' }}>{money(p.amount)}</span>

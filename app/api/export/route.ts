@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     const BOM = '﻿';
     const headers = [
-      'নাম', 'শ্রেণী', 'শাখা', 'রোল', 'অভিভাবক ফোন',
+      'নাম', 'শ্রেণী', 'শাখা', 'রোল', 'মোবাইল',
       'মাসিক ফি', 'শুরুর তারিখ', 'মোট জমা', 'মোট বেকেয়া', 'শিক্ষাবর্ষ', 'অবস্থা'
     ];
 
@@ -23,13 +23,13 @@ export async function GET(req: NextRequest) {
       s.class,
       s.section,
       s.roll,
-      s.guardianPhone,
+      s.phone,
       s.monthlyFee,
       s.startDate,
       s.totalPaid,
       Math.max(0, s.due),
       s.academicYear,
-      s.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়',
+      s.status,
     ]);
 
     const csv =

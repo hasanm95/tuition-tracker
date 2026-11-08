@@ -26,28 +26,34 @@ async function parse<T>(res: Response): Promise<T> {
   return data as T;
 }
 
-/** GET request to the Apps Script backend (reads). */
-export async function query<T>(action: string, params: Params = {}): Promise<T> {
+/**
+ * Call the Apps Script backend. Always POST with the token in the JSON body —
+ * never in the query string — so the secret can't leak into server/access logs,
+ * browser history, or the Referer header. Reads and writes use the same path;
+ * the backend routes on `action`.
+ */
+async function call<T>(action: string, payload: Params = {}): Promise<T> {
   const { base, token } = assertConfigured();
-  const url = new URL(base);
-  url.searchParams.set('action', action);
-  url.searchParams.set('token', token);
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined) url.searchParams.set(k, String(v));
+  const body: Params = { action, token };
+  for (const [k, v] of Object.entries(payload)) {
+    if (v !== undefined) body[k] = v;
   }
-  const res = await fetch(url.toString(), { cache: 'no-store' });
-  return parse<T>(res);
-}
-
-/** POST request to the Apps Script backend (writes). */
-export async function mutate<T>(action: string, payload: Params = {}): Promise<T> {
-  const { base, token } = assertConfigured();
   const res = await fetch(base, {
     method: 'POST',
     // text/plain avoids a CORS preflight; harmless since we call server-side.
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action, token, ...payload }),
+    body: JSON.stringify(body),
     cache: 'no-store',
   });
   return parse<T>(res);
+}
+
+/** Read from the Apps Script backend. */
+export async function query<T>(action: string, params: Params = {}): Promise<T> {
+  return call<T>(action, params);
+}
+
+/** Write to the Apps Script backend. */
+export async function mutate<T>(action: string, payload: Params = {}): Promise<T> {
+  return call<T>(action, payload);
 }

@@ -86,7 +86,7 @@ export default function DailyPage() {
                   <div className="date">
                     {p.studentClass}
                     {p.studentSection ? ` | শাখা: ${p.studentSection}` : ''}
-                    {p.method ? ` | ${p.method}` : ''}
+                    {p.monthName ? ` | ${p.monthName}` : ''}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>

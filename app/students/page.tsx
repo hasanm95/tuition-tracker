@@ -126,8 +126,8 @@ function StudentsInner() {
               <span className={`badge ${s.due > 0 ? 'due' : 'clear'}`}>
                 {s.due > 0 ? money(s.due) : 'পরিষ্কার'}
               </span>
-              <span className={`badge ${s.status === 'active' ? 'active' : 'inactive'}`} style={{ fontSize: 11, padding: '3px 8px' }}>
-                {s.status === 'active' ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+              <span className={`badge ${s.status === 'সক্রিয়' ? 'active' : 'inactive'}`} style={{ fontSize: 11, padding: '3px 8px' }}>
+                {s.status}
               </span>
             </div>
           </div>
