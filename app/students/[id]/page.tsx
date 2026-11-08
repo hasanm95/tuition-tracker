@@ -15,6 +15,7 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     setError(null);
@@ -29,8 +30,34 @@ export default function StudentDetailPage() {
       setError(err.message);
     }
   }
-
   useEffect(() => { load(); }, [id]);
+
+  async function toggleStatus() {
+    if (!student) return;
+    const discharged = student.status === 'অব্যাহতি প্রাপ্ত';
+    const next = discharged ? 'সক্রিয়' : 'অব্যাহতি প্রাপ্ত';
+    if (!confirm(discharged ? 'আবার সক্রিয় করবেন?' : `"${student.name}" কে অব্যাহতি দেবেন?`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/students/${id}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: next }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'ব্যর্থ হয়েছে।');
+      await load();
+    } catch (err: any) { alert(err.message); } finally { setBusy(false); }
+  }
+
+  async function deleteStudent() {
+    if (!student) return;
+    if (!confirm(`"${student.name}" কে স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'মুছতে ব্যর্থ।');
+      router.push('/');
+    } catch (err: any) { alert(err.message); setBusy(false); }
+  }
 
   async function deletePayment(p: Payment) {
     if (!confirm(`${p.paidOn} তারিখের ${money(p.amount)} পেমেন্ট মুছে ফেলবেন?`)) return;
@@ -39,136 +66,105 @@ export default function StudentDetailPage() {
       const res = await fetch(`/api/payments/${p.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('মুছতে ব্যর্থ হয়েছে।');
       await load();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setDeletingPayment(null);
-    }
+    } catch (err: any) { alert(err.message); } finally { setDeletingPayment(null); }
   }
+
+  const discharged = student?.status === 'অব্যাহতি প্রাপ্ত';
 
   return (
     <>
       <div className="breadcrumbs" style={{ marginTop: 14 }}>
         <Link href="/" className="bc-btn">🏠 হোম</Link>
-        <span style={{ color: 'var(--muted)', fontSize: 14 }}>›</span>
-        <Link href="/students" className="bc-btn">← তালিকা</Link>
+        <button className="bc-btn" onClick={() => router.back()}>← তালিকা</button>
       </div>
 
       {error && (isSetupError(error)
         ? <BackendNotice error={error} onRetry={load} />
-        : (
-          <div className="error">
-            {error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button>
-          </div>
-        )
+        : <div className="error">{error} <button className="btn ghost" onClick={load}>আবার চেষ্টা</button></div>
       )}
 
       {!student && !error && (
         <div className="card">
           <div className="skeleton" style={{ height: 28, width: '50%' }} />
           <div className="skeleton" style={{ height: 14, width: '70%', marginTop: 10 }} />
-          <div className="skeleton" style={{ height: 14, width: '40%', marginTop: 8 }} />
         </div>
       )}
 
       {student && (
         <>
-          {/* Action buttons */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <Link href={`/students/${id}/edit`} className="bc-btn" style={{ flex: 1, justifyContent: 'center' }}>
-              ✏️ তথ্য এডিট
-            </Link>
-            <button className="bc-btn" style={{ flex: 1, justifyContent: 'center', color: 'var(--muted)' }}>
-              অব্যাহতি দিন
+          <div className="detail-actions">
+            <button className="pill-btn brand" onClick={() => alert('ভাউচার (JPG/PDF) শীঘ্রই আসছে।')}>📄 ভাউচার (JPG/PDF)</button>
+            <Link href={`/students/${id}/edit`} className="pill-btn amber">✏️ এডিট</Link>
+            <button className="pill-btn gray" onClick={toggleStatus} disabled={busy}>
+              {discharged ? '↩ পুনরায় সক্রিয়' : 'অব্যাহতি'}
             </button>
-            <button
-              className="bc-btn"
-              style={{ flex: 1, justifyContent: 'center', color: 'var(--danger)', borderColor: 'var(--danger-bg)' }}
-              onClick={() => {
-                if (confirm(`"${student.name}" কে মুছে ফেলবেন? এটি পূর্বাবস্থায় ফেরানো যাবে না।`)) {
-                  alert('শিক্ষার্থী মুছার ফিচার শীঘ্রই আসছে।');
-                }
-              }}
-            >
-              🗑️ ডিলিট
-            </button>
+            <button className="pill-btn red" onClick={deleteStudent} disabled={busy}>🗑 ডিলিট</button>
           </div>
 
-          {/* Student Header */}
-          <div className="student-header-card">
-            <div className="student-name">{student.name}</div>
-            <div className="student-tags">
-              <span className="student-tag">
-                {student.class}
-                {student.section ? ` | শাখা: ${student.section}` : ''}
-                {student.roll ? ` | রোল: ${student.roll}` : ''}
-                {student.monthlyFee ? ` | ফি: ৳${student.monthlyFee}` : ''}
-              </span>
-              <span className={`badge ${student.status === 'সক্রিয়' ? 'active' : 'inactive'}`}>
-                {student.status}
-              </span>
-              {student.academicYear && (
-                <span className="badge year">{student.academicYear} শিক্ষাবর্ষ</span>
-              )}
+          <div className="detail-head">
+            <div>
+              <div className="dh-name">{student.name}</div>
+              <div className="dh-tags">
+                <span className="tag-pill">
+                  {student.class}{student.section ? ` | শাখা: ${student.section}` : ''}{student.roll ? ` | রোল: ${student.roll}` : ''}
+                </span>
+                <span className={`badge ${discharged ? 'inactive' : 'active'}`}>{student.status || 'সক্রিয়'}</span>
+                {student.academicYear && <span className="tag-dark">{student.academicYear} সাল</span>}
+              </div>
             </div>
-
             {student.phone && (
-              <>
-                <a href={`tel:${student.phone}`} className="phone-btn">
-                  📞 {student.phone}
-                </a>
-                <div className="phone-hint">ℹ️ নাম্বারে ট্যাপ করলে সরাসরি কল যাবে।</div>
-              </>
+              <a href={`tel:${student.phone}`} className="pill-btn green">📞 {student.phone}</a>
             )}
+          </div>
 
-            <div className="stat-grid">
-              <div className="stat-box">
-                <div className="sk">প্রাইভেট শুরু</div>
-                <div className="sv" style={{ fontSize: 14 }}>{student.startDate || '—'}</div>
-              </div>
-              <div className={`stat-box ${student.totalPaid > 0 ? 'ok' : ''}`}>
-                <div className="sk">মোট জমা দিয়েছে</div>
-                <div className="sv">{money(student.totalPaid)}</div>
-              </div>
-              <div className={`stat-box ${student.due > 0 ? 'bad' : 'ok'}`}>
-                <div className="sk">মোট বেকেয়া আছে</div>
-                <div className="sv">{money(Math.max(0, student.due))}</div>
-              </div>
+          <div className="stat-cards">
+            <div className="stat-card plain">
+              <div className="sc-k">শুরু</div>
+              <div className="sc-v">{student.startDate || '—'}</div>
+            </div>
+            <div className="stat-card mint">
+              <div className="sc-k">মোট আদায়</div>
+              <div className="sc-v">{money(student.totalPaid)}</div>
+            </div>
+            <div className="stat-card rose">
+              <div className="sc-k">বকেয়া</div>
+              <div className="sc-v">{money(Math.max(0, student.due))}</div>
             </div>
           </div>
 
-          {/* Payment form */}
           <PaymentForm studentId={student.id} monthlyFee={student.monthlyFee} onSuccess={load} />
 
-          {/* Payment history */}
-          <div className="card" style={{ marginTop: 10 }}>
-            <div className="pay-section-title">
-              💵 পূর্বে টাকা জমার হিস্ট্রি (ভুল হলে এডিট/ডিলিট করুন):
-            </div>
-            {student.payments.length === 0 && (
-              <div className="muted" style={{ fontSize: 14 }}>এখনো কোনো পেমেন্ট নেই।</div>
-            )}
-            {student.payments.map((p, i) => (
-              <div key={p.id ?? i} className="pay-row">
-                <div>
-                  <div style={{ fontSize: 13, color: 'var(--muted)' }}>#{i + 1} &nbsp; {p.paidOn}</div>
-                  {p.monthName && <div style={{ fontSize: 12, color: 'var(--muted)' }}>{p.monthName}</div>}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="amt" style={{ color: 'var(--ok)' }}>{money(p.amount)}</span>
-                  <div className="pay-actions">
-                    <button
-                      className="icon-btn del"
-                      disabled={deletingPayment === p.id}
-                      onClick={() => deletePayment(p)}
-                      title="মুছুন"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="section-head"><h2 style={{ fontSize: 17 }}>পূর্বে টাকা জমার বিস্তারিত তালিকা:</h2></div>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th className="center">#</th>
+                  <th>মাসের নাম</th>
+                  <th className="num">মাসিক বেতন (৳)</th>
+                  <th>আদায়ের তারিখ</th>
+                  <th className="num">আদায়কৃত টাকা (৳)</th>
+                  <th className="center">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody>
+                {student.payments.map((p, i) => (
+                  <tr key={p.id ?? i}>
+                    <td className="center">{i + 1}</td>
+                    <td>{p.monthName || '—'}</td>
+                    <td className="num">{p.targetFee ? money(p.targetFee) : '—'}</td>
+                    <td>{p.paidOn}</td>
+                    <td className="num">{money(p.amount)}</td>
+                    <td className="center">
+                      <button className="cell-btn" style={{ background: '#ef4444' }} disabled={deletingPayment === p.id} onClick={() => deletePayment(p)}>🗑</button>
+                    </td>
+                  </tr>
+                ))}
+                {student.payments.length === 0 && (
+                  <tr><td colSpan={6} className="center muted">কোনো ডাটা নেই</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </>
       )}

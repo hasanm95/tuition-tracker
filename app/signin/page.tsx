@@ -14,7 +14,7 @@ function SignInInner() {
   }, [params]);
 
   return (
-    <div className="card center" style={{ marginTop: '22vh' }}>
+    <div className="card center" style={{ maxWidth: 400, margin: '18vh auto 0' }}>
       <div style={{ fontSize: 46, lineHeight: 1, marginBottom: 8 }}>🎓</div>
       <h1 style={{ margin: 0, fontSize: 22, fontFamily: 'var(--font-display)' }}>টিউশন ট্র্যাকার</h1>
       <p className="muted" style={{ marginTop: 6 }}>চালিয়ে যেতে সাইন ইন করুন</p>
@@ -40,7 +40,7 @@ function SignInInner() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<div className="card center" style={{ marginTop: '22vh' }}>লোড হচ্ছে…</div>}>
+    <Suspense fallback={<div className="card center" style={{ maxWidth: 400, margin: '18vh auto 0' }}>লোড হচ্ছে…</div>}>
       <SignInInner />
     </Suspense>
   );

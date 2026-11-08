@@ -65,46 +65,35 @@ export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props)
         </div>
       )}
       <form onSubmit={submit}>
-        <div className="row-gap">
+        <div className="inline-fields">
           <div>
             <label htmlFor="pf-month">মাসের নাম</label>
-            <select
-              id="pf-month"
-              value={monthName}
-              onChange={(e) => setMonthName(e.target.value)}
-            >
+            <select id="pf-month" value={monthName} onChange={(e) => setMonthName(e.target.value)}>
               {BN_MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="pf-date">জমার তারিখ</label>
-            <input
-              id="pf-date"
-              type="date"
-              value={paidOn}
-              onChange={(e) => setPaidOn(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="row-gap">
-          <div>
-            <label htmlFor="pf-amount">জমার পরিমাণ (৳)</label>
-            <input
-              id="pf-amount"
-              inputMode="numeric"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="যেমন: ১০০০"
-            />
-          </div>
-          <div>
-            <label htmlFor="pf-target">ধার্য বেতন (৳)</label>
+            <label htmlFor="pf-target">মাসিক বেতন (৳)</label>
             <input
               id="pf-target"
               inputMode="numeric"
               value={targetFee}
               onChange={(e) => setTargetFee(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="যেমন: ১০০০"
+              placeholder="যেমন: ৬০০"
+            />
+          </div>
+          <div>
+            <label htmlFor="pf-date">আদায়ের তারিখ</label>
+            <input id="pf-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+          </div>
+          <div>
+            <label htmlFor="pf-amount">আদায়কৃত টাকা (৳)</label>
+            <input
+              id="pf-amount"
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="যেমন: ৬০০"
             />
           </div>
         </div>
@@ -112,7 +101,7 @@ export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props)
           className="btn"
           type="submit"
           disabled={saving}
-          style={{ marginTop: 14, background: 'var(--ok)' }}
+          style={{ marginTop: 16, background: 'var(--ok)', boxShadow: '0 8px 20px rgba(16,185,129,.26)' }}
         >
           {saving ? 'সেভ হচ্ছে…' : 'জমা নিশ্চিত করুন'}
         </button>

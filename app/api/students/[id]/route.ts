@@ -25,3 +25,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: err.message }, { status: 502 });
   }
 }
+
+// Toggle active / discharged status.
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const { status } = (await req.json()) as { status: string };
+    const data = await mutate<{ student: StudentDetail }>('toggleStatus', { id, status });
+    return NextResponse.json(data.student);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+}
+
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    await mutate<{ deleted: boolean }>('deleteStudent', { id });
+    return NextResponse.json({ ok: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+}
