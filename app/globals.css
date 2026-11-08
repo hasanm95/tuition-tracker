@@ -184,6 +184,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 .bn-btn.c-daily { --c: #92400e; --c-bg: #fef3c7; }
 .bn-btn.c-report { --c: #0e7490; --c-bg: #cffafe; }
 .bn-btn.c-excel { --c: #166534; --c-bg: #dcfce7; }
+.bn-btn.c-sheet { --c: #0b6b3a; --c-bg: #d1fae5; }
 .bn-btn.c-test { --c: #6d28d9; --c-bg: #ede9fe; }
 .bn-btn.c-pass { --c: #9a3412; --c-bg: #ffedd5; }
 .bn-btn.c-sign { --c: #9d174d; --c-bg: #fce7f3; }

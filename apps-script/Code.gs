@@ -24,16 +24,16 @@ function getApiToken() {
 var BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
 
 // Bengali sheet headers — what appears in the Google Sheet
-var STUDENT_SHEET_HEADERS = ['StudentID','নাম','শ্রেণী','শাখা','রোল','শুরুর তারিখ','মাসিক ফি','মোবাইল','স্ট্যাটাস','অব্যাহতি','শিক্ষাবর্ষ'];
+var STUDENT_SHEET_HEADERS = ['StudentID','নাম','শ্রেণী','শাখা','রোল','শুরুর তারিখ','মাসিক ফি','অভিভাবকের নাম্বার','স্ট্যাটাস','অব্যাহতির তারিখ','শিক্ষাবর্ষ'];
 var STUDENT_KEYS          = ['id',       'name','class', 'section','roll','startDate',  'monthlyFee','phone',  'status',  'dischargeDate','academicYear'];
 
-var PAYMENT_SHEET_HEADERS = ['PaymentID','StudentID','তারিখ', 'পরিমাণ', 'এন্ট্রি_সময়','মাসের_নাম','মাসিক_বেতন'];
+var PAYMENT_SHEET_HEADERS = ['PaymentID','StudentID','টাকা জমার তারিখ','টাকার পরিমাণ','এন্ট্রির সময়','মাসের নাম','মাসিক বেতন'];
 var PAYMENT_KEYS          = ['id',       'studentId','paidOn', 'amount', 'entryTime',   'monthName', 'targetFee'];
 
-var EXAM_SHEET_HEADERS = ['MarkID','শিক্ষাবর্ষ',  'শ্রেণী','শাখা',   'StudentID', 'রোল', 'নাম', 'তারিখ',   'পরীক্ষার_নাম','মোট_নম্বর', 'প্রাপ্ত_নম্বর'];
+var EXAM_SHEET_HEADERS = ['MarkID','শিক্ষাবর্ষ','শ্রেণী','শাখা','StudentID','রোল','নাম','পরীক্ষার তারিখ','পরীক্ষার নাম','মোট নম্বর','প্রাপ্ত নম্বর'];
 var EXAM_KEYS          = ['id',    'academicYear', 'class',  'section', 'studentId', 'roll', 'name', 'examDate','examTitle',   'totalMarks','obtainedMarks'];
 
-var CLASS_FEE_SHEET_HEADERS = ['শিক্ষাবর্ষ',  'শ্রেণী','মাসের_নাম','ধার্য_বেতন'];
+var CLASS_FEE_SHEET_HEADERS = ['শিক্ষাবর্ষ','শ্রেণী','মাসের নাম','ধার্য বেতন'];
 var CLASS_FEE_KEYS          = ['academicYear', 'class', 'monthName', 'fee'];
 
 var CONFIG_HEADERS = ['Key', 'Value'];

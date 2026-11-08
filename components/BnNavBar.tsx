@@ -16,6 +16,7 @@ export default function BnNavBar() {
   if (pathname === '/signin' || pathname === '/setup') return null;
 
   const is = (p: string) => (p === '/' ? pathname === '/' : pathname.startsWith(p));
+  const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL;
 
   return (
     <header className="bn-header">
@@ -56,6 +57,19 @@ export default function BnNavBar() {
         <a href={`/api/export?year=${year}`} className="bn-btn c-excel" download>
           <span className="bn-btn-ic">📊</span> এক্সেল
         </a>
+        {sheetUrl ? (
+          <a href={sheetUrl} className="bn-btn c-sheet" target="_blank" rel="noreferrer">
+            <span className="bn-btn-ic">📗</span> শীট
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="bn-btn c-sheet"
+            onClick={() => alert('Google Sheet লিংক সেট করা নেই। .env ও Vercel-এ NEXT_PUBLIC_SHEET_URL যোগ করুন।')}
+          >
+            <span className="bn-btn-ic">📗</span> শীট
+          </button>
+        )}
         <Link href="/students/new" className={`bn-btn c-admit ${is('/students/new') ? 'active' : ''}`}>
           <span className="bn-btn-ic">➕</span> ভর্তি
         </Link>
