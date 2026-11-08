@@ -187,8 +187,8 @@ function ExamTab({ year, cls, students, onNew }: { year: number; cls: string; st
     if (!date) return;
     setLoading(true); setErr(null); setResult(null);
     try {
-      const d = date.split('-').reverse().join('-'); // yyyy-mm-dd → dd-mm-yyyy
-      const res = await fetch(`/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(d)}`, { cache: 'no-store' });
+      // Dates are stored as yyyy-mm-dd (matches imported data + startDate/paidOn).
+      const res = await fetch(`/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(date)}`, { cache: 'no-store' });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
       setResult(await res.json());
     } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
@@ -309,7 +309,7 @@ function ExamModal({ year, cls, students, onClose }: { year: number; cls: string
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           academicYear: String(year), class: cls,
-          examDate: date.split('-').reverse().join('-'),
+          examDate: date,
           examTitle: title.trim(), totalMarks: Number(total), marksList,
         }),
       });

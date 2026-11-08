@@ -8,6 +8,7 @@ import { money } from '@/lib/format';
 import { isSetupError } from '@/lib/errors';
 import PaymentForm from '@/components/PaymentForm';
 import BackendNotice from '@/components/BackendNotice';
+import VoucherModal from '@/components/VoucherModal';
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function StudentDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [voucher, setVoucher] = useState(false);
 
   async function load() {
     setError(null);
@@ -93,7 +95,7 @@ export default function StudentDetailPage() {
       {student && (
         <>
           <div className="detail-actions">
-            <button className="pill-btn brand" onClick={() => alert('ভাউচার (JPG/PDF) শীঘ্রই আসছে।')}>📄 ভাউচার (JPG/PDF)</button>
+            <button className="pill-btn brand" onClick={() => setVoucher(true)}>📄 ভাউচার (JPG/PDF)</button>
             <Link href={`/students/${id}/edit`} className="pill-btn amber">✏️ এডিট</Link>
             <button className="pill-btn gray" onClick={toggleStatus} disabled={busy}>
               {discharged ? '↩ পুনরায় সক্রিয়' : 'অব্যাহতি'}
@@ -166,6 +168,8 @@ export default function StudentDetailPage() {
               </tbody>
             </table>
           </div>
+
+          {voucher && <VoucherModal student={student} onClose={() => setVoucher(false)} />}
         </>
       )}
     </>
