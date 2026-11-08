@@ -178,7 +178,52 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 .bn-btn:hover { transform: translateY(-1px); box-shadow: 0 5px 14px rgba(15, 23, 42, 0.14); }
 .bn-btn:active { transform: translateY(0); }
 .bn-btn.active { outline: 2px solid color-mix(in srgb, var(--c) 55%, transparent); outline-offset: 1px; }
-.bn-btn .bn-btn-ic { font-size: 15px; line-height: 1; }
+.bn-btn .bn-btn-ic {
+  font-size: 14px;
+  line-height: 1;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 3px 4px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+/* ── Mobile nav toggle ────────────────────────────────────────── */
+.bn-hamburger {
+  display: none;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.bn-out-label { display: none; }
+
+@media (max-width: 760px) {
+  .bn-hamburger { display: inline-flex; }
+  .bn-navbtns {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+    background: rgba(255, 255, 255, 0.14);
+    padding: 10px;
+    border-radius: 14px;
+  }
+  .bn-navbtns.open { display: flex; }
+  .bn-navbtns .bn-btn {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 15px;
+    padding: 12px 14px;
+  }
+  .bn-out-label { display: inline; }
+}
 
 .bn-btn.c-home { --c: #1d4ed8; --c-bg: #dbeafe; }
 .bn-btn.c-daily { --c: #92400e; --c-bg: #fef3c7; }
@@ -785,6 +830,19 @@ code.inline {
 /* ── Misc ─────────────────────────────────────────────────────── */
 
 .muted { color: var(--muted); }
+
+/* ── Responsive tweaks ────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .section-head { align-items: stretch; }
+  .section-head > div { min-width: 0; }
+  .section-head .pill-btn { width: 100%; justify-content: center; }
+  .detail-actions { justify-content: stretch; }
+  .detail-actions .pill-btn { flex: 1 1 140px; justify-content: center; }
+  .date-bar .btn, .date-bar select, .date-bar input[type="date"] { flex: 1 1 100%; width: 100%; }
+  .filter-bar .search, .filter-bar select { flex: 1 1 100%; }
+  table.data { font-size: 13px; }
+  table.data thead th, table.data tbody td { padding: 10px 12px; }
+}
 
 /* ── Section header (title + action) ──────────────────────────── */
 

@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
@@ -19,7 +19,15 @@ function StudentsInner() {
 
   const [all, setAll] = useState<Student[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<'students' | 'exam'>('students');
+  const router = useRouter();
+  const pathname = usePathname();
+  const tab: 'students' | 'exam' = searchParams.get('tab') === 'exam' ? 'exam' : 'students';
+  const setTab = (t: 'students' | 'exam') => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', t);
+    if (t !== 'exam') { p.delete('ed'); p.delete('et'); }
+    router.replace(`${pathname}?${p.toString()}`);
+  };
 
   // search + filters
   const [q, setQ] = useState('');
@@ -180,15 +188,21 @@ function StudentsInner() {
 /* ── Exam tab (pick an exam by name/date) ─────────────────────── */
 interface ExamItem { date: string; title: string; totalMarks: number }
 function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNew: () => void; reload: number }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const edParam = searchParams.get('ed') || '';
+  const etParam = searchParams.get('et') || '';
+
   const [exams, setExams] = useState<ExamItem[] | null>(null);
-  const [sel, setSel] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Load the exam list for this class/year.
   useEffect(() => {
     let active = true;
-    setExams(null); setSel(''); setResult(null); setErr(null);
+    setExams(null); setErr(null);
     fetch(`/api/exam?list=1&year=${year}&class=${encodeURIComponent(cls)}`, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
@@ -199,19 +213,30 @@ function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNe
     return () => { active = false; };
   }, [year, cls, reload]);
 
-  async function view(idx: string) {
-    setSel(idx);
-    if (idx === '' || !exams) { setResult(null); return; }
-    const ex = exams[Number(idx)];
+  // Selected exam comes from the URL (?ed=date&et=title) — shareable/bookmarkable.
+  const sel = exams ? exams.findIndex((ex) => ex.date === edParam && ex.title === etParam) : -1;
+
+  useEffect(() => {
+    if (!exams || !edParam || !etParam) { setResult(null); return; }
+    let active = true;
     setLoading(true); setErr(null); setResult(null);
-    try {
-      const res = await fetch(
-        `/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(ex.date)}&title=${encodeURIComponent(ex.title)}`,
-        { cache: 'no-store' }
-      );
-      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
-      setResult(await res.json());
-    } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
+    fetch(`/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(edParam)}&title=${encodeURIComponent(etParam)}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
+        return res.json();
+      })
+      .then((r) => { if (active) setResult(r); })
+      .catch((e) => { if (active) setErr(e.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [exams, edParam, etParam, year, cls]);
+
+  function onSelect(idx: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', 'exam');
+    if (idx === '' || !exams) { p.delete('ed'); p.delete('et'); }
+    else { const ex = exams[Number(idx)]; p.set('ed', ex.date); p.set('et', ex.title); }
+    router.replace(`${pathname}?${p.toString()}`);
   }
 
   const rows = result ? [...(result.sectionA || []), ...(result.sectionB || [])] : [];
@@ -220,7 +245,7 @@ function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNe
     <>
       <div className="date-bar">
         <label>পরীক্ষা:</label>
-        <select value={sel} onChange={(e) => view(e.target.value)} disabled={!exams || exams.length === 0}>
+        <select value={sel >= 0 ? String(sel) : ''} onChange={(e) => onSelect(e.target.value)} disabled={!exams || exams.length === 0}>
           <option value="">{exams ? (exams.length ? 'পরীক্ষা নির্বাচন করুন' : 'কোনো পরীক্ষা নেই') : 'লোড হচ্ছে…'}</option>
           {exams?.map((ex, i) => (
             <option key={i} value={i}>{ex.date} — {ex.title} (পূর্ণমান: {ex.totalMarks})</option>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -11,12 +12,17 @@ const YEARS = [2024, 2025, 2026, 2027, 2028];
 export default function BnNavBar() {
   const { year, setYear } = useYear();
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Close the mobile menu whenever the route changes.
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   // Standalone pages for unauthenticated visitors keep their own layout.
   if (pathname === '/signin' || pathname === '/setup') return null;
 
   const is = (p: string) => (p === '/' ? pathname === '/' : pathname.startsWith(p));
   const sheetUrl = process.env.NEXT_PUBLIC_SHEET_URL;
+  const close = () => setOpen(false);
 
   return (
     <header className="bn-header">
@@ -41,24 +47,33 @@ export default function BnNavBar() {
             </select>
             <span className="bn-year-arrow">▾</span>
           </label>
+          <button
+            type="button"
+            className="bn-hamburger"
+            aria-label="মেনু"
+            aria-expanded={open}
+            onClick={() => setOpen((o) => !o)}
+          >
+            {open ? '✕' : '☰'}
+          </button>
         </div>
       </div>
 
-      <nav className="bn-navbtns">
-        <Link href="/" className={`bn-btn c-home ${is('/') ? 'active' : ''}`}>
+      <nav className={`bn-navbtns ${open ? 'open' : ''}`}>
+        <Link href="/" onClick={close} className={`bn-btn c-home ${is('/') ? 'active' : ''}`}>
           <span className="bn-btn-ic">🏠</span> হোম
         </Link>
-        <Link href="/daily" className={`bn-btn c-daily ${is('/daily') ? 'active' : ''}`}>
+        <Link href="/daily" onClick={close} className={`bn-btn c-daily ${is('/daily') ? 'active' : ''}`}>
           <span className="bn-btn-ic">📅</span> দৈনিক
         </Link>
-        <Link href="/report" className={`bn-btn c-report ${is('/report') ? 'active' : ''}`}>
+        <Link href="/report" onClick={close} className={`bn-btn c-report ${is('/report') ? 'active' : ''}`}>
           <span className="bn-btn-ic">📈</span> রিপোর্ট
         </Link>
-        <a href={`/api/export?year=${year}`} className="bn-btn c-excel" download>
+        <a href={`/api/export?year=${year}`} onClick={close} className="bn-btn c-excel" download>
           <span className="bn-btn-ic">📊</span> এক্সেল
         </a>
         {sheetUrl ? (
-          <a href={sheetUrl} className="bn-btn c-sheet" target="_blank" rel="noreferrer">
+          <a href={sheetUrl} onClick={close} className="bn-btn c-sheet" target="_blank" rel="noreferrer">
             <span className="bn-btn-ic">📗</span> শীট
           </a>
         ) : (
@@ -70,7 +85,7 @@ export default function BnNavBar() {
             <span className="bn-btn-ic">📗</span> শীট
           </button>
         )}
-        <Link href="/students/new" className={`bn-btn c-admit ${is('/students/new') ? 'active' : ''}`}>
+        <Link href="/students/new" onClick={close} className={`bn-btn c-admit ${is('/students/new') ? 'active' : ''}`}>
           <span className="bn-btn-ic">➕</span> ভর্তি
         </Link>
         <button
@@ -79,7 +94,7 @@ export default function BnNavBar() {
           onClick={() => signOut({ callbackUrl: '/signin' })}
           title="লগ আউট"
         >
-          <span className="bn-btn-ic">⏻</span>
+          <span className="bn-btn-ic">⏻</span> <span className="bn-out-label">লগ আউট</span>
         </button>
       </nav>
     </header>
