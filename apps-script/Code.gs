@@ -119,7 +119,7 @@ function addStudent(data) {
   var sheet = tab('Students', STUDENT_SHEET_HEADERS);
   var startDate = String(data.startDate || '').trim();
   var row = {
-    id: uuid(),
+    id: 'STU-' + Date.now(),
     name: String(data.name || '').trim(),
     'class': String(data['class'] || '').trim(),
     section: String(data.section || '').trim(),
@@ -238,7 +238,7 @@ function addPayment(data) {
   var paidOn = String(data.paidOn || new Date().toISOString().slice(0, 10));
   var monthName = data.monthName || BN_MONTHS[new Date(paidOn).getMonth()] || '';
   var row = {
-    id: uuid(),
+    id: 'PAY-' + Date.now(),
     studentId: String(data.studentId),
     paidOn: paidOn,
     amount: amount,
@@ -326,9 +326,9 @@ function saveExamMarks(data) {
       sheet.deleteRow(r + 1);
     }
   }
-  (data.marksList || []).forEach(function(m) {
+  (data.marksList || []).forEach(function(m, i) {
     var obtained = (m.obtainedMarks === '' || m.obtainedMarks == null) ? '' : Number(m.obtainedMarks);
-    sheet.appendRow([uuid(), yr, cls, String(m.section || '').trim(), String(m.studentId || ''), String(m.roll || ''), String(m.name || '').trim(), dt, String(data.examTitle || '').trim(), Number(data.totalMarks || 0), obtained]);
+    sheet.appendRow(['EXM-' + Date.now() + '-' + i, yr, cls, String(m.section || '').trim(), String(m.studentId || ''), String(m.roll || ''), String(m.name || '').trim(), dt, String(data.examTitle || '').trim(), Number(data.totalMarks || 0), obtained]);
   });
   return 'পরীক্ষার নম্বর সংরক্ষিত হয়েছে!';
 }
