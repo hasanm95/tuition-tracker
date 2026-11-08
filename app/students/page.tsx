@@ -29,6 +29,7 @@ function StudentsInner() {
   // modals
   const [feeModal, setFeeModal] = useState(false);
   const [examModal, setExamModal] = useState(false);
+  const [examReload, setExamReload] = useState(0);
 
   async function load() {
     setError(null);
@@ -157,7 +158,7 @@ function StudentsInner() {
       )}
 
       {tab === 'exam' && (
-        <ExamTab year={effYear} cls={classFilter} students={classStudents} onNew={() => setExamModal(true)} />
+        <ExamTab year={effYear} cls={classFilter} onNew={() => setExamModal(true)} reload={examReload} />
       )}
 
       {feeModal && (
@@ -169,26 +170,45 @@ function StudentsInner() {
           year={effYear}
           cls={classFilter}
           students={classStudents}
-          onClose={() => setExamModal(false)}
+          onClose={() => { setExamModal(false); setExamReload((x) => x + 1); }}
         />
       )}
     </>
   );
 }
 
-/* ── Exam tab (view results by date) ──────────────────────────── */
-function ExamTab({ year, cls, students, onNew }: { year: number; cls: string; students: Student[]; onNew: () => void }) {
-  const [date, setDate] = useState('');
+/* ── Exam tab (pick an exam by name/date) ─────────────────────── */
+interface ExamItem { date: string; title: string; totalMarks: number }
+function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNew: () => void; reload: number }) {
+  const [exams, setExams] = useState<ExamItem[] | null>(null);
+  const [sel, setSel] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function view() {
-    if (!date) return;
+  useEffect(() => {
+    let active = true;
+    setExams(null); setSel(''); setResult(null); setErr(null);
+    fetch(`/api/exam?list=1&year=${year}&class=${encodeURIComponent(cls)}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
+        return res.json();
+      })
+      .then((list) => { if (active) setExams(list); })
+      .catch((e) => { if (active) setErr(e.message); });
+    return () => { active = false; };
+  }, [year, cls, reload]);
+
+  async function view(idx: string) {
+    setSel(idx);
+    if (idx === '' || !exams) { setResult(null); return; }
+    const ex = exams[Number(idx)];
     setLoading(true); setErr(null); setResult(null);
     try {
-      // Dates are stored as yyyy-mm-dd (matches imported data + startDate/paidOn).
-      const res = await fetch(`/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(date)}`, { cache: 'no-store' });
+      const res = await fetch(
+        `/api/exam?year=${year}&class=${encodeURIComponent(cls)}&date=${encodeURIComponent(ex.date)}&title=${encodeURIComponent(ex.title)}`,
+        { cache: 'no-store' }
+      );
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'লোড ব্যর্থ');
       setResult(await res.json());
     } catch (e: any) { setErr(e.message); } finally { setLoading(false); }
@@ -199,34 +219,42 @@ function ExamTab({ year, cls, students, onNew }: { year: number; cls: string; st
   return (
     <>
       <div className="date-bar">
-        <label>তারিখ:</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <button className="btn secondary" style={{ width: 'auto' }} onClick={view} disabled={!date || loading}>
-          {loading ? 'লোড হচ্ছে…' : 'দেখুন'}
-        </button>
+        <label>পরীক্ষা:</label>
+        <select value={sel} onChange={(e) => view(e.target.value)} disabled={!exams || exams.length === 0}>
+          <option value="">{exams ? (exams.length ? 'পরীক্ষা নির্বাচন করুন' : 'কোনো পরীক্ষা নেই') : 'লোড হচ্ছে…'}</option>
+          {exams?.map((ex, i) => (
+            <option key={i} value={i}>{ex.date} — {ex.title} (পূর্ণমান: {ex.totalMarks})</option>
+          ))}
+        </select>
         <button className="btn" style={{ width: 'auto' }} onClick={onNew}>➕ নতুন পরীক্ষার নম্বর এন্ট্রি</button>
       </div>
+      {loading && <div className="hl">লোড হচ্ছে…</div>}
       {err && <div className="error">{err}</div>}
       {result && (
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr><th className="center">শাখা</th><th className="num">রোল</th><th>নাম</th><th className="num">প্রাপ্ত</th><th className="num">পূর্ণমান</th></tr>
-            </thead>
-            <tbody>
-              {rows.map((r: any, i: number) => (
-                <tr key={i}>
-                  <td className="center">{r.section}</td>
-                  <td className="num">{r.roll}</td>
-                  <td>{r.name}</td>
-                  <td className="num">{r.isAbsent ? 'অনুপস্থিত' : r.obtainedMarks}</td>
-                  <td className="num">{r.totalMarks}</td>
-                </tr>
-              ))}
-              {rows.length === 0 && <tr><td colSpan={5} className="center muted">এই তারিখে কোনো রেকর্ড নেই।</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="section-head">
+            <h2 style={{ fontSize: 16 }}>{result.examTitle} <span className="muted">({result.examDate})</span></h2>
+          </div>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr><th className="center">শাখা</th><th className="num">রোল</th><th>নাম</th><th className="num">প্রাপ্ত</th><th className="num">পূর্ণমান</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((r: any, i: number) => (
+                  <tr key={i}>
+                    <td className="center">{r.section}</td>
+                    <td className="num">{r.roll}</td>
+                    <td>{r.name}</td>
+                    <td className="num">{r.isAbsent ? 'অনুপস্থিত' : r.obtainedMarks}</td>
+                    <td className="num">{r.totalMarks}</td>
+                  </tr>
+                ))}
+                {rows.length === 0 && <tr><td colSpan={5} className="center muted">কোনো রেকর্ড নেই।</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   );

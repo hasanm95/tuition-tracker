@@ -9,7 +9,12 @@ export async function GET(req: NextRequest) {
     const params: Record<string, string> = {};
     const year = sp.get('year'); if (year) params.year = year;
     const cls = sp.get('class'); if (cls) params.class = cls;
+    if (sp.get('list')) {
+      const listed = await query<{ exams: any[] }>('listExams', params);
+      return NextResponse.json(listed.exams);
+    }
     const date = sp.get('date'); if (date) params.date = date;
+    const title = sp.get('title'); if (title) params.title = title;
     const data = await query<{ result: any }>('getExamResults', params);
     return NextResponse.json(data.result);
   } catch (err: any) {

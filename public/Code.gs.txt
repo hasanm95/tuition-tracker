@@ -77,6 +77,7 @@ function handle(e, action, data) {
       case 'setClassMonthFee':    return json({ ok: true, message: setClassMonthFee(data) });
       case 'saveExamMarks':       return json({ ok: true, message: saveExamMarks(data) });
       case 'getExamResults':      return json({ ok: true, result: getExamResults(data) });
+      case 'listExams':           return json({ ok: true, exams: listExams(data) });
       case 'getMonthlyReport':    return json({ ok: true, report: getMonthlyReport(data.year) });
       case 'verifyPassword':      return json(verifyPassword(data.pass));
       case 'changePassword':      return json(changePassword(data.phone, data.newPass));
@@ -203,7 +204,8 @@ function listPayments(data) {
 
   var payments = readTab('Payments', PAYMENT_SHEET_HEADERS, PAYMENT_KEYS);
   if (data && data.date) {
-    payments = payments.filter(function(p) { return String(p.paidOn) === String(data.date); });
+    var qd = normDate(data.date);
+    payments = payments.filter(function(p) { return normDate(p.paidOn) === qd; });
   }
   if (data && data.year) {
     payments = payments.filter(function(p) {
@@ -317,12 +319,29 @@ function setClassMonthFee(data) {
   return cls + ' / ' + mn + ' = ৳' + fee;
 }
 
+// Normalize any date (Date object, yyyy-mm-dd, dd-mm-yyyy, with / or -) to
+// canonical 'yyyy-MM-dd' so matching works regardless of how it was stored.
+function pad2_(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
+function normDate(d) {
+  if (d === null || d === undefined || d === '') return '';
+  if (Object.prototype.toString.call(d) === '[object Date]') {
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  var s = String(d).trim().split('T')[0];
+  var parts = s.indexOf('/') >= 0 ? s.split('/') : s.split('-');
+  if (parts.length === 3) {
+    if (parts[0].length === 4) return parts[0] + '-' + pad2_(parts[1]) + '-' + pad2_(parts[2]);
+    if (parts[2].length === 4) return parts[2] + '-' + pad2_(parts[1]) + '-' + pad2_(parts[0]);
+  }
+  return s;
+}
+
 function saveExamMarks(data) {
   var sheet = tab('ExamMarks', EXAM_SHEET_HEADERS);
   var values = sheet.getDataRange().getValues();
-  var yr = String(data.academicYear || '').trim(), cls = String(data['class'] || '').trim(), dt = String(data.examDate || '').trim();
+  var yr = String(data.academicYear || '').trim(), cls = String(data['class'] || '').trim(), dt = normDate(data.examDate);
   for (var r = values.length - 1; r >= 1; r--) {
-    if (String(values[r][1]).trim() === yr && String(values[r][2]).trim() === cls && String(values[r][7]).trim() === dt) {
+    if (String(values[r][1]).trim() === yr && String(values[r][2]).trim() === cls && normDate(values[r][7]) === dt) {
       sheet.deleteRow(r + 1);
     }
   }
@@ -333,11 +352,29 @@ function saveExamMarks(data) {
   return 'পরীক্ষার নম্বর সংরক্ষিত হয়েছে!';
 }
 
+// Distinct exams (date + title) for a class/year, newest first.
+function listExams(data) {
+  var exams = readTab('ExamMarks', EXAM_SHEET_HEADERS, EXAM_KEYS);
+  var yr = String(data.year || '').trim(), cls = String(data['class'] || '').trim();
+  var seen = {}, out = [];
+  exams.forEach(function(e) {
+    if (String(e.academicYear).trim() !== yr || String(e['class']).trim() !== cls) return;
+    var d = normDate(e.examDate), t = String(e.examTitle || '').trim();
+    var key = d + '|' + t;
+    if (!seen[key]) { seen[key] = true; out.push({ date: d, title: t, totalMarks: Number(e.totalMarks || 0) }); }
+  });
+  out.sort(function(a, b) { return String(b.date).localeCompare(String(a.date)); });
+  return out;
+}
+
 function getExamResults(data) {
   var exams = readTab('ExamMarks', EXAM_SHEET_HEADERS, EXAM_KEYS);
-  var yr = String(data.year || '').trim(), cls = String(data['class'] || '').trim(), dt = String(data.date || '').trim();
+  var yr = String(data.year || '').trim(), cls = String(data['class'] || '').trim(), dt = normDate(data.date);
+  var title = data.title != null ? String(data.title).trim() : '';
   var rows = exams.filter(function(e) {
-    return e.academicYear === yr && e['class'] === cls && e.examDate === dt;
+    if (!(String(e.academicYear).trim() === yr && String(e['class']).trim() === cls && normDate(e.examDate) === dt)) return false;
+    if (title && String(e.examTitle || '').trim() !== title) return false;
+    return true;
   });
   var secA = [], secB = [];
   rows.forEach(function(e) {
