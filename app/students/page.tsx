@@ -1,12 +1,14 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
-import { BN_MONTHS } from '@/lib/config';
+import { BN_MONTHS, COACHING_NAME, HOTLINE } from '@/lib/config';
+import { formatDate } from '@/lib/format';
+import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
 import BackendNotice from '@/components/BackendNotice';
 
@@ -37,6 +39,7 @@ function StudentsInner() {
   // modals
   const [feeModal, setFeeModal] = useState(false);
   const [examModal, setExamModal] = useState(false);
+  const [examEdit, setExamEdit] = useState<ExamInitial | null>(null);
   const [examReload, setExamReload] = useState(0);
 
   async function load() {
@@ -166,7 +169,14 @@ function StudentsInner() {
       )}
 
       {tab === 'exam' && (
-        <ExamTab year={effYear} cls={classFilter} onNew={() => setExamModal(true)} reload={examReload} />
+        <ExamTab
+          year={effYear}
+          cls={classFilter}
+          onNew={() => setExamModal(true)}
+          onEdit={(init) => setExamEdit(init)}
+          onReload={() => setExamReload((x) => x + 1)}
+          reload={examReload}
+        />
       )}
 
       {feeModal && (
@@ -181,13 +191,27 @@ function StudentsInner() {
           onClose={() => { setExamModal(false); setExamReload((x) => x + 1); }}
         />
       )}
+
+      {examEdit && (
+        <ExamModal
+          year={effYear}
+          cls={classFilter}
+          students={classStudents}
+          initial={examEdit}
+          onClose={() => { setExamEdit(null); setExamReload((x) => x + 1); }}
+        />
+      )}
     </>
   );
 }
 
 /* ── Exam tab (pick an exam by name/date) ─────────────────────── */
 interface ExamItem { date: string; title: string; totalMarks: number }
-function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNew: () => void; reload: number }) {
+interface ExamInitial { date: string; title: string; total: string; marks: Record<string, string> }
+function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
+  year: number; cls: string; onNew: () => void;
+  onEdit: (init: ExamInitial) => void; onReload: () => void; reload: number;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -198,6 +222,9 @@ function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNe
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+  const signature = useSignature();
 
   // Load the exam list for this class/year.
   useEffect(() => {
@@ -241,6 +268,58 @@ function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNe
 
   const rows = result ? [...(result.sectionA || []), ...(result.sectionB || [])] : [];
 
+  async function capture() {
+    const html2canvas = (await import('html2canvas')).default;
+    return html2canvas(printRef.current!, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+  }
+  const safeFile = `ফলাফল-${(result?.examTitle || 'exam').replace(/[\\/:*?"<>|]/g, '').slice(0, 40)}`;
+
+  async function downloadJPG() {
+    setBusy('jpg');
+    try {
+      const canvas = await capture();
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/jpeg', 0.95);
+      a.download = `${safeFile}.jpg`;
+      a.click();
+    } catch (e: any) { alert('ছবি তৈরি ব্যর্থ: ' + e.message); } finally { setBusy(null); }
+  }
+
+  async function downloadPDF() {
+    setBusy('pdf');
+    try {
+      const canvas = await capture();
+      const { jsPDF } = await import('jspdf');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const margin = 12, imgW = 210 - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, imgW, imgH);
+      pdf.save(`${safeFile}.pdf`);
+    } catch (e: any) { alert('PDF তৈরি ব্যর্থ: ' + e.message); } finally { setBusy(null); }
+  }
+
+  async function doDelete() {
+    if (!result) return;
+    if (!confirm(`"${result.examTitle}" (${formatDate(result.examDate)}) পরীক্ষাটি মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
+    setBusy('del');
+    try {
+      const res = await fetch('/api/exam', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ academicYear: String(year), class: cls, examDate: result.examDate, examTitle: result.examTitle }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'মুছতে ব্যর্থ।');
+      onSelect('');
+      onReload();
+    } catch (e: any) { alert(e.message); } finally { setBusy(null); }
+  }
+
+  function doEdit() {
+    if (!result) return;
+    const marks: Record<string, string> = {};
+    rows.forEach((r: any) => { marks[r.studentId] = r.isAbsent ? '' : String(r.obtainedMarks); });
+    onEdit({ date: result.examDate, title: result.examTitle, total: String(result.totalMarks || ''), marks });
+  }
+
   return (
     <>
       <div className="date-bar">
@@ -257,27 +336,47 @@ function ExamTab({ year, cls, onNew, reload }: { year: number; cls: string; onNe
       {err && <div className="error">{err}</div>}
       {result && (
         <>
-          <div className="section-head">
-            <h2 style={{ fontSize: 16 }}>{result.examTitle} <span className="muted">({result.examDate})</span></h2>
+          <div className="sheet-actions">
+            <button className="pill-btn amber" onClick={doEdit} disabled={!!busy}>✏️ সংশোধন</button>
+            <button className="pill-btn green" onClick={downloadJPG} disabled={!!busy}>{busy === 'jpg' ? 'তৈরি হচ্ছে…' : '🖼 রেজাল্ট JPG'}</button>
+            <button className="pill-btn gray" onClick={downloadPDF} disabled={!!busy}>{busy === 'pdf' ? 'তৈরি হচ্ছে…' : '🖨 প্রিন্ট / PDF'}</button>
+            <button className="pill-btn red" onClick={doDelete} disabled={!!busy}>🗑 মুছুন</button>
           </div>
-          <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr><th className="center">শাখা</th><th className="num">রোল</th><th>নাম</th><th className="num">প্রাপ্ত</th><th className="num">পূর্ণমান</th></tr>
-              </thead>
-              <tbody>
-                {rows.map((r: any, i: number) => (
-                  <tr key={i}>
-                    <td className="center">{r.section}</td>
-                    <td className="num">{r.roll}</td>
-                    <td>{r.name}</td>
-                    <td className="num">{r.isAbsent ? 'অনুপস্থিত' : r.obtainedMarks}</td>
-                    <td className="num">{r.totalMarks}</td>
-                  </tr>
-                ))}
-                {rows.length === 0 && <tr><td colSpan={5} className="center muted">কোনো রেকর্ড নেই।</td></tr>}
-              </tbody>
-            </table>
+
+          <div ref={printRef} className="print-sheet">
+            <div className="es-head">
+              <div className="es-title">{COACHING_NAME}</div>
+              <div className="es-sub">হটলাইন: {HOTLINE}</div>
+              <div className="es-meta">
+                <span className="es-badge">পরীক্ষার ফলাফল</span>
+                <span>তারিখ: {formatDate(result.examDate)}</span>
+                <span>পূর্ণমান: {result.totalMarks}</span>
+              </div>
+              <div className="es-exam">{cls} — {result.examTitle}</div>
+            </div>
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr><th className="center">শাখা</th><th className="num">রোল</th><th>নাম</th><th className="num">প্রাপ্ত</th><th className="num">পূর্ণমান</th></tr>
+                </thead>
+                <tbody>
+                  {rows.map((r: any, i: number) => (
+                    <tr key={i}>
+                      <td className="center">{r.section}</td>
+                      <td className="num">{r.roll}</td>
+                      <td>{r.name}</td>
+                      <td className="num">{r.isAbsent ? <span className="badge absent">পরীক্ষা দেয় নাই</span> : r.obtainedMarks}</td>
+                      <td className="num">{r.totalMarks}</td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && <tr><td colSpan={5} className="center muted">কোনো রেকর্ড নেই।</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="sheet-sign">
+              {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
+              <div className="sheet-sign-line">পরিচালকের স্বাক্ষর</div>
+            </div>
           </div>
         </>
       )}
@@ -340,11 +439,11 @@ function FeeModal({ year, cls, onClose }: { year: number; cls: string; onClose: 
 }
 
 /* ── Exam-entry modal ─────────────────────────────────────────── */
-function ExamModal({ year, cls, students, onClose }: { year: number; cls: string; students: Student[]; onClose: () => void }) {
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [title, setTitle] = useState('');
-  const [total, setTotal] = useState('');
-  const [marks, setMarks] = useState<Record<string, string>>({});
+function ExamModal({ year, cls, students, initial, onClose }: { year: number; cls: string; students: Student[]; initial?: ExamInitial; onClose: () => void }) {
+  const [date, setDate] = useState(initial?.date || new Date().toISOString().slice(0, 10));
+  const [title, setTitle] = useState(initial?.title || '');
+  const [total, setTotal] = useState(initial?.total || '');
+  const [marks, setMarks] = useState<Record<string, string>>(initial?.marks || {});
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -376,7 +475,7 @@ function ExamModal({ year, cls, students, onClose }: { year: number; cls: string
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head brand">
-          নতুন পরীক্ষার নম্বর এন্ট্রি
+          {initial ? 'পরীক্ষার নম্বর সংশোধন' : 'নতুন পরীক্ষার নম্বর এন্ট্রি'}
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
         <div className="modal-body">

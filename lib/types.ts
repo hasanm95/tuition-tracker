@@ -30,6 +30,8 @@ export interface Payment {
 
 export interface StudentDetail extends Student {
   payments: Payment[];
+  /** Effective fee per month name (override or base). Keyed by Bengali month. */
+  monthFees?: Record<string, number>;
 }
 
 export interface StudentInput {

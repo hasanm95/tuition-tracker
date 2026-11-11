@@ -234,6 +234,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 .bn-btn.c-pass { --c: #9a3412; --c-bg: #ffedd5; }
 .bn-btn.c-sign { --c: #9d174d; --c-bg: #fce7f3; }
 .bn-btn.c-admit { --c: #15803d; --c-bg: #bbf7d0; }
+.bn-btn.c-settings { --c: #4338ca; --c-bg: #e0e7ff; }
 .bn-btn.c-out { --c: #b91c1c; --c-bg: #fee2e2; }
 
 /* ── App Shell ────────────────────────────────────────────────── */
@@ -303,10 +304,12 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 
 .class-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 18px;
   margin-top: 4px;
 }
+@media (min-width: 900px) { .class-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 400px) { .class-grid { gap: 12px; } }
 
 .class-card {
   --ac: var(--brand);
@@ -431,6 +434,29 @@ a:hover > .student-row { transform: translateY(-2px); box-shadow: var(--shadow-l
 .badge.active { background: var(--ok-bg); color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 32%, transparent); }
 .badge.inactive { background: #f1f0f7; color: var(--muted); border: 1px solid var(--border); }
 .badge.year { background: var(--brand-soft); color: var(--brand); border: 1px solid color-mix(in srgb, var(--brand) 24%, transparent); }
+.badge.absent { background: var(--danger); color: #fff; border: 1px solid var(--danger); white-space: nowrap; }
+
+/* ── Printable sheet (exam result / daily collection) ─────────── */
+.sheet-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
+.print-sheet { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.print-sheet .es-head { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 14px; }
+.print-sheet .es-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: #2563eb; }
+.print-sheet .es-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+.print-sheet .es-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; align-items: center; font-size: 13px; color: #334155; margin-top: 8px; }
+.print-sheet .es-badge { background: var(--danger); color: #fff; font-weight: 700; padding: 3px 12px; border-radius: 999px; }
+.print-sheet .es-badge.ok { background: #16a34a; }
+.print-sheet .es-exam { font-weight: 700; margin-top: 8px; color: #0f172a; }
+.print-sheet .es-total { display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 14px; font-weight: 800; }
+.print-sheet .es-total b { font-family: var(--font-display); font-size: 20px; color: #16a34a; }
+
+/* ── Signature (voucher / sheets / settings) ──────────────────── */
+.sig-img { display: block; max-height: 70px; max-width: 180px; object-fit: contain; }
+.sig-current { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px dashed var(--border); border-radius: 10px; background: #fff; }
+.sig-current .sig-img { max-height: 90px; max-width: 240px; }
+.voucher .vc-sign .sig-img { margin-left: auto; margin-bottom: 2px; }
+.sheet-sign { margin-top: 26px; text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.sheet-sign .sig-img { margin-bottom: 2px; }
+.sheet-sign-line { display: inline-block; border-top: 1.5px solid #0f172a; padding-top: 4px; font-size: 13px; color: #334155; min-width: 160px; text-align: center; }
 
 /* ── Student Detail ───────────────────────────────────────────── */
 
@@ -1087,7 +1113,10 @@ table.data td.center, table.data th.center { text-align: center; }
 .voucher .vc-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
 .voucher .vc-receipt { display: inline-block; margin-top: 8px; background: #2563eb; color: #fff; font-weight: 700; font-size: 13px; padding: 4px 16px; border-radius: 999px; }
 .voucher .vc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 14px; margin-bottom: 14px; }
-.voucher .vc-info span { color: #64748b; }
+.voucher .vc-info > div { display: flex; align-items: baseline; gap: 6px; }
+.voucher .vc-info span { color: #64748b; white-space: nowrap; }
+.voucher .vc-info b { word-break: break-word; }
+@media (max-width: 480px) { .voucher .vc-info { grid-template-columns: 1fr; } }
 .voucher .vc-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
 .voucher .vc-table th { background: #eff6ff; color: #1d4ed8; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }
 .voucher .vc-table td { padding: 8px 10px; border: 1px solid #e2e8f0; }
@@ -1130,8 +1159,10 @@ table.data td.center, table.data th.center { text-align: center; }
 .tag-pill { background: var(--brand); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
 .tag-dark { background: #1e293b; color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700; }
 
-.stat-card.plain { background: var(--card); }
-.stat-card.plain .sc-v { color: var(--text); font-size: 22px; }
+.stat-card.plain { background: #eff6ff; border-color: #dbeafe; }
+.stat-card.plain .sc-v { color: var(--brand); font-size: 22px; }
+.stat-card.wide { margin-bottom: 16px; }
+.stat-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
 .stat-card.mint { background: #ecfdf5; border-color: #bbf7d0; }
 .stat-card.mint .sc-v { color: #16a34a; }
 .stat-card.rose { background: #fef2f2; border-color: #fecaca; }

@@ -7,18 +7,50 @@ const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ার
 interface Props {
   studentId: string;
   monthlyFee?: number;
+  /** Effective fee per month name (class/month override, else base fee). */
+  monthFees?: Record<string, number>;
+  /** Month names already paid — used to default to the next unpaid month. */
+  paidMonths?: string[];
   onSuccess?: () => void;
 }
 
-export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props) {
-  const defaultMonth = BN_MONTHS[new Date().getMonth()];
-  const [amount, setAmount] = useState(monthlyFee ? String(monthlyFee) : '');
+export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMonths, onSuccess }: Props) {
+  // Effective fee for a given month: override if set, else base monthly fee.
+  const feeFor = (m: string) => monthFees?.[m] ?? monthlyFee ?? 0;
+
+  // Default to the month after the latest one already paid, so the box
+  // auto-advances (e.g. after November is paid, it shows December).
+  function nextUnpaidMonth(): string {
+    if (paidMonths && paidMonths.length) {
+      let maxIdx = -1;
+      for (const pm of paidMonths) {
+        const idx = BN_MONTHS.indexOf(pm);
+        if (idx > maxIdx) maxIdx = idx;
+      }
+      if (maxIdx >= 0) return BN_MONTHS[(maxIdx + 1) % 12];
+    }
+    return BN_MONTHS[new Date().getMonth()];
+  }
+
+  const initialMonth = nextUnpaidMonth();
+  const initialFee = feeFor(initialMonth);
+  const feeStr = (f: number) => (f ? String(f) : '');
+
+  const [amount, setAmount] = useState(feeStr(initialFee));
   const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
-  const [monthName, setMonthName] = useState(defaultMonth);
-  const [targetFee, setTargetFee] = useState(monthlyFee ? String(monthlyFee) : '');
+  const [monthName, setMonthName] = useState(initialMonth);
+  const [targetFee, setTargetFee] = useState(feeStr(initialFee));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // When the month changes, refill the fee + amount from that month's rate.
+  function onMonthChange(m: string) {
+    setMonthName(m);
+    const f = feeStr(feeFor(m));
+    setTargetFee(f);
+    setAmount(f);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +77,9 @@ export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props)
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'পেমেন্ট রেকর্ড করা যায়নি।');
       }
-      setAmount(monthlyFee ? String(monthlyFee) : '');
+      // Advance to the next month so the next deposit is pre-filled.
+      const paidIdx = BN_MONTHS.indexOf(monthName);
+      onMonthChange(BN_MONTHS[(paidIdx + 1) % 12]);
       setSuccess(true);
       onSuccess?.();
     } catch (err: any) {
@@ -68,7 +102,7 @@ export default function PaymentForm({ studentId, monthlyFee, onSuccess }: Props)
         <div className="inline-fields">
           <div>
             <label htmlFor="pf-month">মাসের নাম</label>
-            <select id="pf-month" value={monthName} onChange={(e) => setMonthName(e.target.value)}>
+            <select id="pf-month" value={monthName} onChange={(e) => onMonthChange(e.target.value)}>
               {BN_MONTHS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>

@@ -88,6 +88,9 @@ export default function BnNavBar() {
         <Link href="/students/new" onClick={close} className={`bn-btn c-admit ${is('/students/new') ? 'active' : ''}`}>
           <span className="bn-btn-ic">➕</span> ভর্তি
         </Link>
+        <Link href="/settings" onClick={close} className={`bn-btn c-settings ${is('/settings') ? 'active' : ''}`}>
+          <span className="bn-btn-ic">⚙️</span> সেটিংস
+        </Link>
         <button
           type="button"
           className="bn-btn c-out"
