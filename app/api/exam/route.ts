@@ -31,3 +31,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message }, { status: 502 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const data = await mutate<{ message: string }>('deleteExam', body);
+    return NextResponse.json({ message: data.message });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 502 });
+  }
+}

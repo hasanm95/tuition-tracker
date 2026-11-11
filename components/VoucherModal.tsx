@@ -2,14 +2,16 @@
 
 import { useRef, useState } from 'react';
 import type { StudentDetail } from '@/lib/types';
-import { money } from '@/lib/format';
+import { money, formatDate } from '@/lib/format';
 import { COACHING_NAME, HOTLINE } from '@/lib/config';
+import { useSignature } from '@/lib/useSignature';
 
 export default function VoucherModal({ student, onClose }: { student: StudentDetail; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const signature = useSignature();
 
-  const today = new Date().toLocaleDateString('bn-BD');
+  const today = formatDate(new Date());
   const safeName = (student.name || 'student').replace(/[\\/:*?"<>|]/g, '').slice(0, 40);
 
   async function capture() {
@@ -73,6 +75,7 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
               <div><span>নাম:</span> <b>{student.name}</b></div>
               <div><span>শ্রেণী:</span> <b>{student.class}{student.section ? ` (${student.section})` : ''}</b></div>
               <div><span>রোল:</span> <b>{student.roll || '—'}</b></div>
+              <div><span>মূল বেতন:</span> <b>{student.monthlyFee > 0 ? money(student.monthlyFee) : 'বেতন নাই'}</b></div>
               <div><span>মোবাইল:</span> <b>{student.phone || '—'}</b></div>
               <div><span>শিক্ষাবর্ষ:</span> <b>{student.academicYear || '—'}</b></div>
               <div><span>তারিখ:</span> <b>{today}</b></div>
@@ -80,14 +83,19 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
 
             <table className="vc-table">
               <thead>
-                <tr><th>#</th><th>মাসের নাম</th><th>তারিখ</th><th style={{ textAlign: 'right' }}>পরিমাণ (৳)</th></tr>
+                <tr>
+                  <th>মাসের নাম</th>
+                  <th style={{ textAlign: 'right' }}>মাসিক বেতন (৳)</th>
+                  <th>আদায়ের তারিখ</th>
+                  <th style={{ textAlign: 'right' }}>আদায়কৃত টাকা (৳)</th>
+                </tr>
               </thead>
               <tbody>
                 {student.payments.map((p, i) => (
                   <tr key={p.id ?? i}>
-                    <td>{i + 1}</td>
                     <td>{p.monthName || '—'}</td>
-                    <td>{p.paidOn}</td>
+                    <td style={{ textAlign: 'right' }}>{p.targetFee ? money(p.targetFee) : '—'}</td>
+                    <td>{formatDate(p.paidOn)}</td>
                     <td style={{ textAlign: 'right' }}>{money(p.amount)}</td>
                   </tr>
                 ))}
@@ -103,6 +111,7 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
             </div>
 
             <div className="vc-sign">
+              {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
               <div className="vc-sig-line">স্বাক্ষর</div>
             </div>
           </div>

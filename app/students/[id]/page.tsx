@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import type { StudentDetail, Payment } from '@/lib/types';
-import { money } from '@/lib/format';
+import { money, formatDate } from '@/lib/format';
 import { isSetupError } from '@/lib/errors';
 import PaymentForm from '@/components/PaymentForm';
 import BackendNotice from '@/components/BackendNotice';
@@ -119,11 +119,11 @@ export default function StudentDetailPage() {
             )}
           </div>
 
-          <div className="stat-cards">
-            <div className="stat-card plain">
-              <div className="sc-k">শুরু</div>
-              <div className="sc-v">{student.startDate || '—'}</div>
-            </div>
+          <div className="stat-card plain wide">
+            <div className="sc-k">শুরু</div>
+            <div className="sc-v">{formatDate(student.startDate)}</div>
+          </div>
+          <div className="stat-duo">
             <div className="stat-card mint">
               <div className="sc-k">মোট আদায়</div>
               <div className="sc-v">{money(student.totalPaid)}</div>
@@ -134,7 +134,13 @@ export default function StudentDetailPage() {
             </div>
           </div>
 
-          <PaymentForm studentId={student.id} monthlyFee={student.monthlyFee} onSuccess={load} />
+          <PaymentForm
+            studentId={student.id}
+            monthlyFee={student.monthlyFee}
+            monthFees={student.monthFees}
+            paidMonths={student.payments.map((p) => p.monthName).filter(Boolean)}
+            onSuccess={load}
+          />
 
           <div className="section-head"><h2 style={{ fontSize: 17 }}>পূর্বে টাকা জমার বিস্তারিত তালিকা:</h2></div>
           <div className="table-wrap">
@@ -155,7 +161,7 @@ export default function StudentDetailPage() {
                     <td className="center">{i + 1}</td>
                     <td>{p.monthName || '—'}</td>
                     <td className="num">{p.targetFee ? money(p.targetFee) : '—'}</td>
-                    <td>{p.paidOn}</td>
+                    <td>{formatDate(p.paidOn)}</td>
                     <td className="num">{money(p.amount)}</td>
                     <td className="center">
                       <button className="cell-btn" style={{ background: '#ef4444' }} disabled={deletingPayment === p.id} onClick={() => deletePayment(p)}>🗑</button>

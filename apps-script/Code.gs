@@ -76,9 +76,12 @@ function handle(e, action, data) {
       case 'getClassesSummary':   return json({ ok: true, classes: getClassesSummary(data.year) });
       case 'setClassMonthFee':    return json({ ok: true, message: setClassMonthFee(data) });
       case 'saveExamMarks':       return json({ ok: true, message: saveExamMarks(data) });
+      case 'deleteExam':          return json({ ok: true, message: deleteExam(data) });
       case 'getExamResults':      return json({ ok: true, result: getExamResults(data) });
       case 'listExams':           return json({ ok: true, exams: listExams(data) });
       case 'getMonthlyReport':    return json({ ok: true, report: getMonthlyReport(data.year) });
+      case 'getSignature':        return json({ ok: true, signature: getConfig()['SIGNATURE'] || '' });
+      case 'saveSignature':       return json({ ok: true, message: saveSignature(data.signature) });
       case 'verifyPassword':      return json(verifyPassword(data.pass));
       case 'changePassword':      return json(changePassword(data.phone, data.newPass));
       default:                    return json({ ok: false, error: 'Unknown action: ' + action });
@@ -113,7 +116,30 @@ function getStudent(id) {
   var totalPaid = payments.reduce(function(sum, p) { return sum + Number(p.amount || 0); }, 0);
   var out = withDue(student, totalPaid, classFees);
   out.payments = payments;
+  out.monthFees = monthFeeMap(student, classFees);
   return out;
+}
+
+// Effective fee for each of the 12 months: the class/month override if one
+// exists, otherwise the student's base monthly fee. Lets the payment form
+// default to the right amount for a month before any payment is recorded.
+function monthFeeMap(student, classFees) {
+  var fee = Number(student.monthlyFee || 0);
+  var yr = String(student.academicYear || (student.startDate ? String(student.startDate).slice(0, 4) : ''));
+  var cls = String(student['class'] || '');
+  var map = {};
+  for (var mi = 0; mi < BN_MONTHS.length; mi++) {
+    var mn = BN_MONTHS[mi];
+    var override = null;
+    for (var i = 0; i < classFees.length; i++) {
+      if (String(classFees[i].academicYear) === yr && String(classFees[i]['class']) === cls && String(classFees[i].monthName) === mn) {
+        override = Number(classFees[i].fee || 0);
+        break;
+      }
+    }
+    map[mn] = override !== null ? override : fee;
+  }
+  return map;
 }
 
 function addStudent(data) {
@@ -352,6 +378,25 @@ function saveExamMarks(data) {
   return 'পরীক্ষার নম্বর সংরক্ষিত হয়েছে!';
 }
 
+// Delete every mark row of one exam (year + class + date + title).
+function deleteExam(data) {
+  var sheet = tab('ExamMarks', EXAM_SHEET_HEADERS);
+  var values = sheet.getDataRange().getValues();
+  var yr = String(data.academicYear || data.year || '').trim();
+  var cls = String(data['class'] || '').trim();
+  var dt = normDate(data.examDate || data.date);
+  var title = String(data.examTitle || data.title || '').trim();
+  var removed = 0;
+  for (var r = values.length - 1; r >= 1; r--) {
+    if (String(values[r][1]).trim() === yr && String(values[r][2]).trim() === cls &&
+        normDate(values[r][7]) === dt && String(values[r][8] || '').trim() === title) {
+      sheet.deleteRow(r + 1); removed++;
+    }
+  }
+  if (!removed) throw 'পরীক্ষা পাওয়া যায়নি।';
+  return 'পরীক্ষা মুছে ফেলা হয়েছে।';
+}
+
 // Distinct exams (date + title) for a class/year, newest first.
 function listExams(data) {
   var exams = readTab('ExamMarks', EXAM_SHEET_HEADERS, EXAM_KEYS);
@@ -412,6 +457,17 @@ function getMonthlyReport(yr) {
   var totExp = 0, totCol = 0;
   stats.forEach(function(m) { m.dueAmount = Math.max(0, m.expectedAmount - m.collectedAmount); totExp += m.expectedAmount; totCol += m.collectedAmount; });
   return { year: year, monthlyStats: stats, totalExpected: totExp, totalCollected: totCol, totalDue: Math.max(0, totExp - totCol) };
+}
+
+// ---- SIGNATURE ------------------------------------------------------------
+
+// Store the director's signature as a data-URL string in Config.
+// '' clears it. Guarded under the Google Sheets 50,000-char cell limit.
+function saveSignature(sig) {
+  sig = String(sig || '');
+  if (sig.length > 45000) throw 'স্বাক্ষর ছবিটি অনেক বড়। ছোট/কম রেজোলিউশনের ছবি দিন।';
+  setConfig('SIGNATURE', sig);
+  return sig ? 'স্বাক্ষর সংরক্ষিত হয়েছে!' : 'স্বাক্ষর মুছে ফেলা হয়েছে।';
 }
 
 // ---- PASSWORD -------------------------------------------------------------
