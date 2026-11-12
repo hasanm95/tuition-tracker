@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { todayLocal } from '@/lib/format';
 
 const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
 
@@ -37,7 +38,7 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
   const feeStr = (f: number) => (f ? String(f) : '');
 
   const [amount, setAmount] = useState(feeStr(initialFee));
-  const [paidOn, setPaidOn] = useState(new Date().toISOString().slice(0, 10));
+  const [paidOn, setPaidOn] = useState(todayLocal());
   const [monthName, setMonthName] = useState(initialMonth);
   const [targetFee, setTargetFee] = useState(feeStr(initialFee));
   const [saving, setSaving] = useState(false);

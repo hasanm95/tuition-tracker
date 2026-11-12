@@ -24,6 +24,14 @@ export function formatDate(d: string | Date | null | undefined): string {
   return s;
 }
 
+/** Today's date as yyyy-mm-dd in the user's LOCAL timezone (not UTC). */
+export function todayLocal(): string {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
 export function dueLabel(due: number): string {
   if (due > 0) return 'owed';
   if (due < 0) return 'in advance';

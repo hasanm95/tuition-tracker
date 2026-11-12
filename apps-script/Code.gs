@@ -160,7 +160,18 @@ function addStudent(data) {
   };
   if (!row.name) throw 'নাম আবশ্যক।';
   sheet.appendRow(STUDENT_KEYS.map(function(k) { return row[k]; }));
+  forceTextCells_(sheet, sheet.getLastRow(), ['startDate', 'academicYear'], row, STUDENT_KEYS);
   return withDue(row, 0, []);
+}
+
+// Re-write the given columns as literal text so Sheets does not coerce dates
+// (startDate) or 4-digit years (academicYear) into Date/number cells, which
+// otherwise break date lookups and strict string comparisons.
+function forceTextCells_(sheet, rowNum, fields, obj, keys) {
+  fields.forEach(function(f) {
+    var col = keys.indexOf(f) + 1;
+    if (col > 0) sheet.getRange(rowNum, col).setNumberFormat('@').setValue(String(obj[f]));
+  });
 }
 
 function updateStudent(data) {
@@ -187,6 +198,7 @@ function updateStudent(data) {
       };
       sheet.getRange(r + 1, 1, 1, STUDENT_KEYS.length)
         .setValues([STUDENT_KEYS.map(function(k) { return updated[k]; })]);
+      forceTextCells_(sheet, r + 1, ['startDate', 'academicYear'], updated, STUDENT_KEYS);
       return getStudent(updated.id);
     }
   }
@@ -238,7 +250,7 @@ function listPayments(data) {
       var s = studentMap[String(p.studentId)];
       if (!s) return false;
       var ay = s.academicYear || (s.startDate ? String(s.startDate).slice(0, 4) : '');
-      return ay === String(data.year);
+      return String(ay) === String(data.year);
     });
   }
   return payments.map(function(p) {
@@ -275,6 +287,10 @@ function addPayment(data) {
     targetFee: Number(data.targetFee || amount)
   };
   sheet.appendRow(PAYMENT_KEYS.map(function(k) { return row[k]; }));
+  // Keep paidOn as literal text (yyyy-mm-dd) so Sheets does not coerce it into a
+  // timezone-shifted Date cell, which would break date-based lookups (daily).
+  var pc = PAYMENT_KEYS.indexOf('paidOn') + 1;
+  sheet.getRange(sheet.getLastRow(), pc).setNumberFormat('@').setValue(row.paidOn);
   return row;
 }
 
@@ -297,6 +313,8 @@ function updatePayment(data) {
       };
       sheet.getRange(r + 1, 1, 1, PAYMENT_KEYS.length)
         .setValues([PAYMENT_KEYS.map(function(k) { return updated[k]; })]);
+      var pc = PAYMENT_KEYS.indexOf('paidOn') + 1;
+      sheet.getRange(r + 1, pc).setNumberFormat('@').setValue(updated.paidOn);
       return updated;
     }
   }
@@ -322,8 +340,8 @@ function getClassesSummary(yr) {
   var ORDERED = ['৬ষ্ঠ','৭ম','৮ম','৯ম','৯ম বিজ্ঞান','১০ম','১০ম বিজ্ঞান','পরীক্ষার্থী','পরীক্ষার্থী বিজ্ঞান'];
   ORDERED.forEach(function(c) { map[c] = { active: 0, inactive: 0 }; });
   students.forEach(function(s) {
-    var sYr = s.academicYear || (s.startDate ? s.startDate.slice(0, 4) : '');
-    if ((sYr === yStr || !sYr) && map[s['class']]) {
+    var sYr = s.academicYear || (s.startDate ? String(s.startDate).slice(0, 4) : '');
+    if ((String(sYr) === yStr || !sYr) && map[s['class']]) {
       s.status === 'অব্যাহতি প্রাপ্ত' ? map[s['class']].inactive++ : map[s['class']].active++;
     }
   });
