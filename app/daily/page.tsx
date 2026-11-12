@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import type { Payment } from '@/lib/types';
-import { money, formatDate } from '@/lib/format';
+import { money, formatDate, todayLocal } from '@/lib/format';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
 import { COACHING_NAME, HOTLINE } from '@/lib/config';
@@ -11,7 +11,7 @@ import BackendNotice from '@/components/BackendNotice';
 
 export default function DailyPage() {
   const { year } = useYear();
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(todayLocal());
   const [rows, setRows] = useState<Payment[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

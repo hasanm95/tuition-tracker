@@ -7,7 +7,7 @@ import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
 import { BN_MONTHS, COACHING_NAME, HOTLINE } from '@/lib/config';
-import { formatDate } from '@/lib/format';
+import { formatDate, todayLocal } from '@/lib/format';
 import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
 import BackendNotice from '@/components/BackendNotice';
@@ -440,7 +440,7 @@ function FeeModal({ year, cls, onClose }: { year: number; cls: string; onClose: 
 
 /* ── Exam-entry modal ─────────────────────────────────────────── */
 function ExamModal({ year, cls, students, initial, onClose }: { year: number; cls: string; students: Student[]; initial?: ExamInitial; onClose: () => void }) {
-  const [date, setDate] = useState(initial?.date || new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(initial?.date || todayLocal());
   const [title, setTitle] = useState(initial?.title || '');
   const [total, setTotal] = useState(initial?.total || '');
   const [marks, setMarks] = useState<Record<string, string>>(initial?.marks || {});

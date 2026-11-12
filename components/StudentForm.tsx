@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
+import { todayLocal } from '@/lib/format';
 import BackendNotice from '@/components/BackendNotice';
 
 interface Props {
@@ -26,7 +27,7 @@ export default function StudentForm({ student }: Props) {
     class: student?.class ?? '',
     section: student?.section ?? '',
     roll: student?.roll ?? '',
-    startDate: student?.startDate ?? new Date().toISOString().slice(0, 10),
+    startDate: student?.startDate ?? todayLocal(),
     monthlyFee: student?.monthlyFee != null ? String(student.monthlyFee) : '',
     phone: student?.phone ?? '',
     status: student?.status ?? 'সক্রিয়',
