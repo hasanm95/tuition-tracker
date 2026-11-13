@@ -337,7 +337,7 @@ function getClassesSummary(yr) {
   var yStr = (yr || new Date().getFullYear()).toString();
   var students = readTab('Students', STUDENT_SHEET_HEADERS, STUDENT_KEYS);
   var map = {};
-  var ORDERED = ['৬ষ্ঠ','৭ম','৮ম','৯ম','৯ম বিজ্ঞান','১০ম','১০ম বিজ্ঞান','পরীক্ষার্থী','পরীক্ষার্থী বিজ্ঞান'];
+  var ORDERED = ['৬ষ্ঠ','৭ম','৮ম','৯ম','৯ম (HM)','১০ম','১০ম (HM)','পরীক্ষার্থী','পরীক্ষার্থী (HM)'];
   ORDERED.forEach(function(c) { map[c] = { active: 0, inactive: 0 }; });
   students.forEach(function(s) {
     var sYr = s.academicYear || (s.startDate ? String(s.startDate).slice(0, 4) : '');
@@ -346,6 +346,36 @@ function getClassesSummary(yr) {
     }
   });
   return ORDERED.map(function(c) { return { className: c, active: map[c].active, inactive: map[c].inactive }; });
+}
+
+// One-time migration: rename every "<class> বিজ্ঞান" to "<class> (HM)" across the
+// Students, ClassFees and ExamMarks sheets. RUN THIS ONCE from the Apps Script
+// editor (select migrateScienceToHM in the function dropdown → Run) after
+// deploying the new code. Safe to re-run — already-renamed rows are untouched.
+function migrateScienceToHM() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var targets = [
+    { name: 'Students',  col: STUDENT_KEYS.indexOf('class') + 1 },
+    { name: 'ClassFees', col: CLASS_FEE_KEYS.indexOf('class') + 1 },
+    { name: 'ExamMarks', col: EXAM_KEYS.indexOf('class') + 1 }
+  ];
+  var changed = 0;
+  targets.forEach(function(t) {
+    var sheet = ss.getSheetByName(t.name);
+    if (!sheet || t.col < 1 || sheet.getLastRow() < 2) return;
+    var rng = sheet.getRange(2, t.col, sheet.getLastRow() - 1, 1);
+    var vals = rng.getValues();
+    var dirty = false;
+    for (var i = 0; i < vals.length; i++) {
+      var v = String(vals[i][0] || '');
+      if (v.indexOf('বিজ্ঞান') >= 0) {
+        vals[i][0] = v.replace(/বিজ্ঞান/g, '(HM)').replace(/\s+/g, ' ').trim();
+        dirty = true; changed++;
+      }
+    }
+    if (dirty) rng.setValues(vals);
+  });
+  return 'Updated ' + changed + ' rows to (HM).';
 }
 
 function setClassMonthFee(data) {

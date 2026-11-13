@@ -2,31 +2,24 @@
 
 import { useRef, useState } from 'react';
 import type { StudentDetail } from '@/lib/types';
-import { money, formatDate } from '@/lib/format';
-import { COACHING_NAME, HOTLINE } from '@/lib/config';
+import { money, formatDate, formatDateBnSlash } from '@/lib/format';
+import { COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
 import { useSignature } from '@/lib/useSignature';
+import { captureSheet, sheetToPdf } from '@/lib/capture';
 
 export default function VoucherModal({ student, onClose }: { student: StudentDetail; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const signature = useSignature();
 
-  const today = formatDate(new Date());
   const safeName = (student.name || 'student').replace(/[\\/:*?"<>|]/g, '').slice(0, 40);
-
-  async function capture() {
-    const html2canvas = (await import('html2canvas')).default;
-    const node = ref.current!;
-    return html2canvas(node, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-  }
 
   async function downloadJPG() {
     setBusy('jpg');
     try {
-      const canvas = await capture();
-      const url = canvas.toDataURL('image/jpeg', 0.95);
+      const canvas = await captureSheet(ref.current!);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = canvas.toDataURL('image/jpeg', 0.95);
       a.download = `ভাউচার-${safeName}.jpg`;
       a.click();
     } catch (e: any) {
@@ -39,15 +32,8 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
   async function downloadPDF() {
     setBusy('pdf');
     try {
-      const canvas = await capture();
-      const { jsPDF } = await import('jspdf');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = 210;
-      const margin = 12;
-      const imgW = pageW - margin * 2;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, imgW, imgH);
-      pdf.save(`ভাউচার-${safeName}.pdf`);
+      const canvas = await captureSheet(ref.current!);
+      await sheetToPdf(canvas, `ভাউচার-${safeName}.pdf`);
     } catch (e: any) {
       alert('PDF তৈরি ব্যর্থ: ' + e.message);
     } finally {
@@ -64,21 +50,19 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
         </div>
         <div className="modal-body">
           {/* Captured area */}
-          <div className="voucher" ref={ref}>
+          <div className="voucher framed" ref={ref}>
             <div className="vc-head">
               <div className="vc-title">{COACHING_NAME}</div>
-              <div className="vc-sub">হটলাইন: {HOTLINE}</div>
-              <div className="vc-receipt">ফি রসিদ</div>
+              <div className="vc-sub">{TAGLINE} | মোবাইল: {HOTLINE}</div>
+              <div className="vc-receipt">টাকা আদায় ভাউচার</div>
             </div>
 
             <div className="vc-info">
               <div><span>নাম:</span> <b>{student.name}</b></div>
+              <div><span>মোবাইল:</span> <b>{student.phone || '—'}</b></div>
               <div><span>শ্রেণী:</span> <b>{student.class}{student.section ? ` (${student.section})` : ''}</b></div>
               <div><span>রোল:</span> <b>{student.roll || '—'}</b></div>
               <div><span>মূল বেতন:</span> <b>{student.monthlyFee > 0 ? money(student.monthlyFee) : 'বেতন নাই'}</b></div>
-              <div><span>মোবাইল:</span> <b>{student.phone || '—'}</b></div>
-              <div><span>শিক্ষাবর্ষ:</span> <b>{student.academicYear || '—'}</b></div>
-              <div><span>তারিখ:</span> <b>{today}</b></div>
             </div>
 
             <table className="vc-table">
@@ -106,13 +90,19 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
             </table>
 
             <div className="vc-totals">
-              <div className="vc-tot ok"><span>মোট জমা</span><b>{money(student.totalPaid)}</b></div>
+              <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
               <div className="vc-tot due"><span>বকেয়া</span><b>{money(Math.max(0, student.due))}</b></div>
             </div>
 
-            <div className="vc-sign">
-              {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
-              <div className="vc-sig-line">স্বাক্ষর</div>
+            <div className="vc-foot">
+              <div className="vc-foot-meta">
+                <div>তারিখ: {formatDateBnSlash(new Date())}</div>
+                <div>মোবাইল: {HOTLINE}</div>
+              </div>
+              <div className="vc-sign">
+                {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
+                <div className="vc-sig-line">পরিচালকের স্বাক্ষর</div>
+              </div>
             </div>
           </div>
         </div>

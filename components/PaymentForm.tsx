@@ -10,27 +10,37 @@ interface Props {
   monthlyFee?: number;
   /** Effective fee per month name (class/month override, else base fee). */
   monthFees?: Record<string, number>;
-  /** Month names already paid — used to default to the next unpaid month. */
+  /** Month names already paid — used to default to the first unpaid month. */
   paidMonths?: string[];
+  /** Student's enrolment date (yyyy-mm-dd); dues start from this month. */
+  startDate?: string;
   onSuccess?: () => void;
 }
 
-export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMonths, onSuccess }: Props) {
+export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMonths, startDate, onSuccess }: Props) {
   // Effective fee for a given month: override if set, else base monthly fee.
   const feeFor = (m: string) => monthFees?.[m] ?? monthlyFee ?? 0;
 
-  // Default to the month after the latest one already paid, so the box
-  // auto-advances (e.g. after November is paid, it shows December).
+  // A month the class was not taught (fee set to 0 for a fee-paying student) is
+  // a holiday — skip it when choosing the default month.
+  const isHoliday = (m: string) => (monthlyFee ?? 0) > 0 && feeFor(m) === 0;
+
+  // Default to the FIRST unpaid, non-holiday month counting from the enrolment
+  // month — dues begin at the start month, so e.g. a student who joined in
+  // August and has paid nothing should see আগস্ট, not the current calendar
+  // month, and any "না পড়ানো" month in between is skipped.
   function nextUnpaidMonth(): string {
-    if (paidMonths && paidMonths.length) {
-      let maxIdx = -1;
-      for (const pm of paidMonths) {
-        const idx = BN_MONTHS.indexOf(pm);
-        if (idx > maxIdx) maxIdx = idx;
-      }
-      if (maxIdx >= 0) return BN_MONTHS[(maxIdx + 1) % 12];
+    const paid = new Set(paidMonths || []);
+    const startIdx = startDate ? new Date(startDate).getMonth() : 0;
+    for (let i = startIdx; i < 12; i++) {
+      const m = BN_MONTHS[i];
+      if (!paid.has(m) && !isHoliday(m)) return m;
     }
-    return BN_MONTHS[new Date().getMonth()];
+    // Fallback: first unpaid month ignoring holidays, else the last month.
+    for (let i = startIdx; i < 12; i++) {
+      if (!paid.has(BN_MONTHS[i])) return BN_MONTHS[i];
+    }
+    return BN_MONTHS[11];
   }
 
   const initialMonth = nextUnpaidMonth();
@@ -78,9 +88,11 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'পেমেন্ট রেকর্ড করা যায়নি।');
       }
-      // Advance to the next month so the next deposit is pre-filled.
+      // Advance to the next non-holiday month so the next deposit is pre-filled.
       const paidIdx = BN_MONTHS.indexOf(monthName);
-      onMonthChange(BN_MONTHS[(paidIdx + 1) % 12]);
+      let next = (paidIdx + 1) % 12;
+      while (next !== paidIdx && isHoliday(BN_MONTHS[next])) next = (next + 1) % 12;
+      onMonthChange(BN_MONTHS[next]);
       setSuccess(true);
       onSuccess?.();
     } catch (err: any) {

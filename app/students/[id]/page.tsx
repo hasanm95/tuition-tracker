@@ -139,6 +139,7 @@ export default function StudentDetailPage() {
             monthlyFee={student.monthlyFee}
             monthFees={student.monthFees}
             paidMonths={student.payments.map((p) => p.monthName).filter(Boolean)}
+            startDate={student.startDate}
             onSuccess={load}
           />
 

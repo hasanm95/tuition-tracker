@@ -439,6 +439,7 @@ a:hover > .student-row { transform: translateY(-2px); box-shadow: var(--shadow-l
 /* ── Printable sheet (exam result / daily collection) ─────────── */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
 .print-sheet { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.print-sheet.framed { border: 2px dashed #94a3b8; border-radius: 16px; padding: 24px; }
 .print-sheet .es-head { text-align: center; border-bottom: 2px dashed #cbd5e1; padding-bottom: 12px; margin-bottom: 14px; }
 .print-sheet .es-title { font-family: var(--font-display); font-size: 20px; font-weight: 800; color: #2563eb; }
 .print-sheet .es-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
@@ -448,6 +449,13 @@ a:hover > .student-row { transform: translateY(-2px); box-shadow: var(--shadow-l
 .print-sheet .es-exam { font-weight: 700; margin-top: 8px; color: #0f172a; }
 .print-sheet .es-total { display: flex; justify-content: flex-end; gap: 10px; align-items: center; margin-top: 14px; font-weight: 800; }
 .print-sheet .es-total b { font-family: var(--font-display); font-size: 20px; color: #16a34a; }
+.print-sheet .es-section { margin-top: 16px; }
+.print-sheet .es-section-head { background: #eef2ff; color: #1e3a8a; font-weight: 700; text-align: center; padding: 8px; border: 1px solid #c7d2fe; border-bottom: none; border-radius: 10px 10px 0 0; }
+.print-sheet .es-section .table-wrap { border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px; }
+.print-sheet .es-section table.data { min-width: 0; }
+.print-sheet .es-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 22px; padding-top: 12px; border-top: 2px dashed #cbd5e1; font-size: 13px; color: #334155; }
+.print-sheet .es-foot-meta div { margin-top: 3px; }
+.print-sheet .es-foot .sheet-sign { margin-top: 0; }
 
 /* ── Signature (voucher / sheets / settings) ──────────────────── */
 .sig-img { display: block; max-height: 70px; max-width: 180px; object-fit: contain; }
@@ -960,6 +968,8 @@ table.data td.center, table.data th.center { text-align: center; }
 }
 .cell-btn.call { background: #16a34a; }
 .cell-btn.profile { background: var(--brand); }
+.cell-btn.voucher { background: #0891b2; }
+.cell-btn:disabled { opacity: .6; cursor: default; }
 
 /* ── Report stat cards ────────────────────────────────────────── */
 
@@ -1126,8 +1136,12 @@ table.data td.center, table.data th.center { text-align: center; }
 .voucher .vc-tot b { font-size: 18px; }
 .voucher .vc-tot.ok { background: #ecfdf5; color: #16a34a; }
 .voucher .vc-tot.due { background: #fef2f2; color: #dc2626; }
-.voucher .vc-sign { text-align: right; margin-top: 28px; }
-.voucher .vc-sig-line { display: inline-block; border-top: 1.5px solid #0f172a; padding-top: 4px; font-size: 13px; color: #334155; min-width: 140px; text-align: center; }
+.voucher.framed { border: 2px dashed #94a3b8; border-radius: 16px; padding: 24px; }
+.voucher .vc-info { padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+.voucher .vc-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 24px; padding-top: 12px; border-top: 2px dashed #cbd5e1; font-size: 13px; color: #334155; }
+.voucher .vc-foot-meta div { margin-top: 3px; }
+.voucher .vc-sign { text-align: right; }
+.voucher .vc-sig-line { display: inline-block; border-top: 1.5px solid #0f172a; padding-top: 4px; font-size: 13px; color: #334155; min-width: 160px; text-align: center; }
 
 /* ── Student detail ───────────────────────────────────────────── */
 .detail-actions {

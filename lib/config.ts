@@ -1,5 +1,6 @@
 // App display config. Adjust to the coaching centre's own name / hotline.
 export const COACHING_NAME = 'শাকিল স্যারের গণিত প্রাইভেট';
+export const TAGLINE = 'গণিত শিখি ও শেখাই';
 export const HOTLINE = '01812665475';
 
 export const BN_MONTHS = [

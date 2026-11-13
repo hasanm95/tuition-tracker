@@ -24,6 +24,20 @@ export function formatDate(d: string | Date | null | undefined): string {
   return s;
 }
 
+/** Convert ASCII digits in a string to Bengali numerals (০-৯). */
+export function toBnDigits(s: string | number): string {
+  const bn = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(s).replace(/[0-9]/g, (d) => bn[+d]);
+}
+
+/** Date as Bengali-numeral d/m/yyyy (e.g. ৮/১১/২০২৬) for sheet footers. */
+export function formatDateBnSlash(d: string | Date | null | undefined): string {
+  const s = formatDate(d); // dd-mm-yyyy
+  if (!s || s === '—' || !s.includes('-')) return s;
+  const [dd, mm, yyyy] = s.split('-');
+  return toBnDigits(`${Number(dd)}/${Number(mm)}/${yyyy}`);
+}
+
 /** Today's date as yyyy-mm-dd in the user's LOCAL timezone (not UTC). */
 export function todayLocal(): string {
   const d = new Date();

@@ -6,8 +6,9 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
-import { BN_MONTHS, COACHING_NAME, HOTLINE } from '@/lib/config';
-import { formatDate, todayLocal } from '@/lib/format';
+import { BN_MONTHS, COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
+import { formatDate, formatDateBnSlash, todayLocal } from '@/lib/format';
+import { captureSheet, sheetToPdf } from '@/lib/capture';
 import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
 import BackendNotice from '@/components/BackendNotice';
@@ -267,17 +268,20 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
   }
 
   const rows = result ? [...(result.sectionA || []), ...(result.sectionB || [])] : [];
+  // Group rows by শাখা (section) for the section-wise result sheet.
+  const sections = (() => {
+    const by: Record<string, any[]> = {};
+    rows.forEach((r: any) => { (by[r.section || '—'] ||= []).push(r); });
+    return Object.keys(by).sort().map((label) => ({ label, rows: by[label] }));
+  })();
+  const pct = (got: number, total: number) => (total > 0 ? `${((got / total) * 100).toFixed(1)}%` : '—');
 
-  async function capture() {
-    const html2canvas = (await import('html2canvas')).default;
-    return html2canvas(printRef.current!, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-  }
   const safeFile = `ফলাফল-${(result?.examTitle || 'exam').replace(/[\\/:*?"<>|]/g, '').slice(0, 40)}`;
 
   async function downloadJPG() {
     setBusy('jpg');
     try {
-      const canvas = await capture();
+      const canvas = await captureSheet(printRef.current!);
       const a = document.createElement('a');
       a.href = canvas.toDataURL('image/jpeg', 0.95);
       a.download = `${safeFile}.jpg`;
@@ -288,13 +292,8 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
   async function downloadPDF() {
     setBusy('pdf');
     try {
-      const canvas = await capture();
-      const { jsPDF } = await import('jspdf');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const margin = 12, imgW = 210 - margin * 2;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, imgW, imgH);
-      pdf.save(`${safeFile}.pdf`);
+      const canvas = await captureSheet(printRef.current!);
+      await sheetToPdf(canvas, `${safeFile}.pdf`);
     } catch (e: any) { alert('PDF তৈরি ব্যর্থ: ' + e.message); } finally { setBusy(null); }
   }
 
@@ -343,10 +342,10 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
             <button className="pill-btn red" onClick={doDelete} disabled={!!busy}>🗑 মুছুন</button>
           </div>
 
-          <div ref={printRef} className="print-sheet">
+          <div ref={printRef} className="print-sheet framed">
             <div className="es-head">
               <div className="es-title">{COACHING_NAME}</div>
-              <div className="es-sub">হটলাইন: {HOTLINE}</div>
+              <div className="es-sub">{TAGLINE} | মোবাইল: {HOTLINE}</div>
               <div className="es-meta">
                 <span className="es-badge">পরীক্ষার ফলাফল</span>
                 <span>তারিখ: {formatDate(result.examDate)}</span>
@@ -354,28 +353,41 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
               </div>
               <div className="es-exam">{cls} — {result.examTitle}</div>
             </div>
-            <div className="table-wrap">
-              <table className="data">
-                <thead>
-                  <tr><th className="center">শাখা</th><th className="num">রোল</th><th>নাম</th><th className="num">প্রাপ্ত</th><th className="num">পূর্ণমান</th></tr>
-                </thead>
-                <tbody>
-                  {rows.map((r: any, i: number) => (
-                    <tr key={i}>
-                      <td className="center">{r.section}</td>
-                      <td className="num">{r.roll}</td>
-                      <td>{r.name}</td>
-                      <td className="num">{r.isAbsent ? <span className="badge absent">পরীক্ষা দেয় নাই</span> : r.obtainedMarks}</td>
-                      <td className="num">{r.totalMarks}</td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && <tr><td colSpan={5} className="center muted">কোনো রেকর্ড নেই।</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <div className="sheet-sign">
-              {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
-              <div className="sheet-sign-line">পরিচালকের স্বাক্ষর</div>
+
+            {rows.length === 0 && <div className="center muted" style={{ padding: 20 }}>কোনো রেকর্ড নেই।</div>}
+
+            {sections.map((sec) => (
+              <div className="es-section" key={sec.label}>
+                <div className="es-section-head">শাখা: {sec.label}</div>
+                <div className="table-wrap">
+                  <table className="data">
+                    <thead>
+                      <tr><th className="num">রোল</th><th>শিক্ষার্থীর নাম</th><th className="num">প্রাপ্ত নম্বর</th><th className="num">শতকরা</th></tr>
+                    </thead>
+                    <tbody>
+                      {sec.rows.map((r: any, i: number) => (
+                        <tr key={i}>
+                          <td className="num">{r.roll}</td>
+                          <td>{r.name}</td>
+                          <td className="num">{r.isAbsent ? <span className="badge absent">পরীক্ষা দেয় নাই</span> : r.obtainedMarks}</td>
+                          <td className="num">{r.isAbsent ? '—' : pct(r.obtainedMarks, r.totalMarks)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+
+            <div className="es-foot">
+              <div className="es-foot-meta">
+                <div>তারিখ: {formatDateBnSlash(result.examDate)}</div>
+                <div>মোবাইল: {HOTLINE}</div>
+              </div>
+              <div className="sheet-sign">
+                {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
+                <div className="sheet-sign-line">পরিচালকের স্বাক্ষর</div>
+              </div>
             </div>
           </div>
         </>
