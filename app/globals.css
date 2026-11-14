@@ -452,7 +452,7 @@ a:hover > .student-row { transform: translateY(-2px); box-shadow: var(--shadow-l
 .print-sheet .es-section { margin-top: 16px; }
 .print-sheet .es-section-head { background: #eef2ff; color: #1e3a8a; font-weight: 700; text-align: center; padding: 8px; border: 1px solid #c7d2fe; border-bottom: none; border-radius: 10px 10px 0 0; }
 .print-sheet .es-section .table-wrap { border: 1px solid #e2e8f0; border-radius: 0 0 10px 10px; }
-.print-sheet .es-section table.data { min-width: 0; }
+.print-sheet .es-section table.data { min-width: 0; font-size: 15px; }
 .print-sheet .es-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 22px; padding-top: 12px; border-top: 2px dashed #cbd5e1; font-size: 13px; color: #334155; }
 .print-sheet .es-foot-meta div { margin-top: 3px; }
 .print-sheet .es-foot .sheet-sign { margin-top: 0; }
@@ -1127,7 +1127,7 @@ table.data td.center, table.data th.center { text-align: center; }
 .voucher .vc-info span { color: #64748b; white-space: nowrap; }
 .voucher .vc-info b { word-break: break-word; }
 @media (max-width: 480px) { .voucher .vc-info { grid-template-columns: 1fr; } }
-.voucher .vc-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+.voucher .vc-table { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 14px; }
 .voucher .vc-table th { background: #eff6ff; color: #1d4ed8; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; }
 .voucher .vc-table td { padding: 8px 10px; border: 1px solid #e2e8f0; }
 .voucher .vc-totals { display: flex; gap: 12px; margin-bottom: 20px; }
