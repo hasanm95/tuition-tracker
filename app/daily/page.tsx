@@ -53,6 +53,20 @@ export default function DailyPage() {
   }
 
   const total = (rows ?? []).reduce((s, r) => s + (r.amount || 0), 0);
+
+  // Group by student for the voucher table — same student may pay multiple months on one day.
+  const groupedRows = rows
+    ? Object.values(
+        rows.reduce<Record<string, Payment & { amount: number }>>((acc, r) => {
+          if (acc[r.studentId]) {
+            acc[r.studentId].amount += r.amount || 0;
+          } else {
+            acc[r.studentId] = { ...r, amount: r.amount || 0 };
+          }
+          return acc;
+        }, {})
+      )
+    : [];
   const notConnected = isSetupError(error);
 
   const safeFile = `দৈনিক-আদায়-${formatDate(date)}`;
@@ -165,8 +179,8 @@ export default function DailyPage() {
                     <tr><th>নাম</th><th>শ্রেণী</th><th className="num">জমা (৳)</th><th className="center">ভাউচার</th><th className="center">প্রোফাইল</th></tr>
                   </thead>
                   <tbody>
-                    {rows.map((r, i) => (
-                      <tr key={r.id || i}>
+                    {groupedRows.map((r, i) => (
+                      <tr key={r.studentId || i}>
                         <td>{r.studentName}</td>
                         <td>{r.studentClass}{r.studentSection ? ` (${r.studentSection})` : ''}</td>
                         <td className="num">{money(r.amount)}</td>
