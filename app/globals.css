@@ -1208,6 +1208,7 @@ table.data td.center, table.data th.center { text-align: center; }
   color: var(--brand-dark);
   font-weight: 600;
 }
+.subject-check-item input[type="radio"],
 .subject-check-item input[type="checkbox"] {
   accent-color: var(--brand);
   width: 15px;

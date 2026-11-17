@@ -61,7 +61,7 @@ function StudentsInner() {
 
   // students of this class
   const classStudents = useMemo(
-    () => (all ?? []).filter((s) => !classFilter || s.class === classFilter),
+    () => (all ?? []).filter((s) => !classFilter || s.class === classFilter || s.class === classFilter + ' (HM)'),
     [all, classFilter]
   );
 
@@ -151,7 +151,9 @@ function StudentsInner() {
                       {s.isFree && <span className="badge free" style={{ fontSize: 11 }}>বিনা বেতনে</span>}
                     </div>
                     <div className="meta">রোল: {s.roll} | শাখা: {s.section || '—'}</div>
-                  {s.subjects && <div className="meta subjects-meta">{s.subjects}</div>}
+                  {(s.subjects || ['৬ষ্ঠ','৭ম','৮ম'].includes(s.class)) && (
+                    <div className="meta subjects-meta">{s.subjects || 'সাধারণ গণিত'}</div>
+                  )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}

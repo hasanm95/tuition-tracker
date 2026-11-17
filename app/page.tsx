@@ -32,14 +32,14 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, [year]);
 
-  const CLASS_ORDER = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '৯ম (HM)', '১০ম', '১০ম (HM)', 'পরীক্ষার্থী', 'পরীক্ষার্থী (HM)'];
+  const CLASS_ORDER = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '১০ম', 'পরীক্ষার্থী'];
 
   const classes = useMemo(() => {
     if (!students) return [];
     const map: Record<string, number> = {};
     for (const s of students) {
       if (s.status === 'অব্যাহতি প্রাপ্ত') continue;
-      const cls = s.class || '—';
+      const cls = (s.class || '—').replace(/ \(HM\)$/, '');
       map[cls] = (map[cls] || 0) + 1;
     }
     return Object.entries(map)

@@ -11,15 +11,15 @@ interface Props {
   student?: Student;
 }
 
-const CLASS_OPTIONS = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '৯ম (HM)', '১০ম', '১০ম (HM)', 'পরীক্ষার্থী', 'পরীক্ষার্থী (HM)'];
+const CLASS_OPTIONS = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '১০ম', 'পরীক্ষার্থী'];
 const SECTION_OPTIONS = ['ক', 'খ', 'গ', 'ঘ', 'ঙ'];
 const YEARS = [2024, 2025, 2026, 2027, 2028];
 
 const SUBJECT_OPTIONS = ['সাধারণ গণিত', 'উচ্চতর গণিত', 'পদার্থবিজ্ঞান', 'রসায়ন', 'জীববিজ্ঞান'];
-const ADVANCED_CLASSES = new Set(['৯ম', '৯ম (HM)', '১০ম', '১০ম (HM)', 'পরীক্ষার্থী', 'পরীক্ষার্থী (HM)']);
+const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
 const isAdvanced = (cls: string) => ADVANCED_CLASSES.has(cls);
-const defaultSubjects = (cls: string, existing?: string) =>
-  isAdvanced(cls) ? (existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : []) : ['সাধারণ গণিত'];
+const defaultSubject = (cls: string, existing?: string) =>
+  isAdvanced(cls) ? (existing?.trim() || '') : 'সাধারণ গণিত';
 
 export default function StudentForm({ student }: Props) {
   const router = useRouter();
@@ -39,7 +39,7 @@ export default function StudentForm({ student }: Props) {
     status: student?.status ?? 'সক্রিয়',
     academicYear: String(defaultYear),
   });
-  const [subjects, setSubjects] = useState<string[]>(() => defaultSubjects(student?.class ?? '', student?.subjects));
+  const [subject, setSubject] = useState(() => defaultSubject(student?.class ?? '', student?.subjects));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,11 +49,7 @@ export default function StudentForm({ student }: Props) {
 
   function handleClassChange(cls: string) {
     set('class', cls);
-    setSubjects(defaultSubjects(cls, subjects.join(', ')));
-  }
-
-  function toggleSubject(s: string) {
-    setSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+    setSubject(defaultSubject(cls, subject));
   }
 
   async function submit(e: React.FormEvent) {
@@ -65,7 +61,7 @@ export default function StudentForm({ student }: Props) {
     }
     setSaving(true);
     try {
-      const payload = { ...form, monthlyFee: Number(form.monthlyFee || 0), subjects: subjects.join(', ') };
+      const payload = { ...form, monthlyFee: Number(form.monthlyFee || 0), subjects: subject };
       const res = await fetch(
         editing ? `/api/students/${student!.id}` : '/api/students',
         {
@@ -155,14 +151,10 @@ export default function StudentForm({ student }: Props) {
       <div>
         <label>বিষয়সমূহ</label>
         {isAdvanced(form.class) ? (
-          <div className="subject-checks">
-            {SUBJECT_OPTIONS.map((s) => (
-              <label key={s} className="subject-check-item">
-                <input type="checkbox" checked={subjects.includes(s)} onChange={() => toggleSubject(s)} />
-                {s}
-              </label>
-            ))}
-          </div>
+          <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <option value="">-- বিষয় বেছে নিন --</option>
+            {SUBJECT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
         ) : (
           <div style={{ marginTop: 6 }}>
             <span className="badge active" style={{ fontSize: 13 }}>সাধারণ গণিত</span>
