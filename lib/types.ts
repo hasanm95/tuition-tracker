@@ -13,6 +13,7 @@ export interface Student {
   isFree: boolean;
   totalPaid: number;
   due: number;
+  subjects?: string;
 }
 
 export interface Payment {
@@ -44,6 +45,7 @@ export interface StudentInput {
   phone?: string;
   status?: string;
   academicYear?: string;
+  subjects?: string;
 }
 
 export interface PaymentInput {

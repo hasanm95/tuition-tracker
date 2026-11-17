@@ -113,6 +113,9 @@ export default function StudentDetailPage() {
                 <span className={`badge ${discharged ? 'inactive' : 'active'}`}>{student.status || 'সক্রিয়'}</span>
                 {student.academicYear && <span className="tag-dark">{student.academicYear} সাল</span>}
               </div>
+              {student.subjects && (
+                <div className="dh-subjects">বিষয়: {student.subjects}</div>
+              )}
             </div>
             {student.phone && (
               <a href={`tel:${student.phone}`} className="pill-btn green">📞 {student.phone}</a>

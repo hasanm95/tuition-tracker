@@ -64,6 +64,9 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
               <div><span>রোল:</span> <b>{student.roll || '—'}</b></div>
               <div><span>মূল বেতন:</span> <b>{student.monthlyFee > 0 ? money(student.monthlyFee) : 'বেতন নাই'}</b></div>
               <div><span>শুরুর তারিখ:</span> <b>{student.startDate ? formatDate(student.startDate) : '—'}</b></div>
+              {student.subjects && (
+                <div style={{ gridColumn: '1 / -1' }}><span>বিষয়:</span> <b>{student.subjects}</b></div>
+              )}
             </div>
 
             <table className="vc-table">

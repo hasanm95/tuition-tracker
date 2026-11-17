@@ -15,6 +15,12 @@ const CLASS_OPTIONS = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '৯ম (HM
 const SECTION_OPTIONS = ['ক', 'খ', 'গ', 'ঘ', 'ঙ'];
 const YEARS = [2024, 2025, 2026, 2027, 2028];
 
+const SUBJECT_OPTIONS = ['সাধারণ গণিত', 'উচ্চতর গণিত', 'পদার্থবিজ্ঞান', 'রসায়ন', 'জীববিজ্ঞান'];
+const ADVANCED_CLASSES = new Set(['৯ম', '৯ম (HM)', '১০ম', '১০ম (HM)', 'পরীক্ষার্থী', 'পরীক্ষার্থী (HM)']);
+const isAdvanced = (cls: string) => ADVANCED_CLASSES.has(cls);
+const defaultSubjects = (cls: string, existing?: string) =>
+  isAdvanced(cls) ? (existing ? existing.split(',').map((s) => s.trim()).filter(Boolean) : []) : ['সাধারণ গণিত'];
+
 export default function StudentForm({ student }: Props) {
   const router = useRouter();
   const editing = !!student;
@@ -33,11 +39,21 @@ export default function StudentForm({ student }: Props) {
     status: student?.status ?? 'সক্রিয়',
     academicYear: String(defaultYear),
   });
+  const [subjects, setSubjects] = useState<string[]>(() => defaultSubjects(student?.class ?? '', student?.subjects));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function handleClassChange(cls: string) {
+    set('class', cls);
+    setSubjects(defaultSubjects(cls, subjects.join(', ')));
+  }
+
+  function toggleSubject(s: string) {
+    setSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   }
 
   async function submit(e: React.FormEvent) {
@@ -49,7 +65,7 @@ export default function StudentForm({ student }: Props) {
     }
     setSaving(true);
     try {
-      const payload = { ...form, monthlyFee: Number(form.monthlyFee || 0) };
+      const payload = { ...form, monthlyFee: Number(form.monthlyFee || 0), subjects: subjects.join(', ') };
       const res = await fetch(
         editing ? `/api/students/${student!.id}` : '/api/students',
         {
@@ -94,7 +110,7 @@ export default function StudentForm({ student }: Props) {
           <select
             id="class"
             value={form.class}
-            onChange={(e) => set('class', e.target.value)}
+            onChange={(e) => handleClassChange(e.target.value)}
           >
             <option value="">-- শ্রেণী বেছে নিন --</option>
             {CLASS_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -134,6 +150,24 @@ export default function StudentForm({ student }: Props) {
             {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
+      </div>
+
+      <div>
+        <label>বিষয়সমূহ</label>
+        {isAdvanced(form.class) ? (
+          <div className="subject-checks">
+            {SUBJECT_OPTIONS.map((s) => (
+              <label key={s} className="subject-check-item">
+                <input type="checkbox" checked={subjects.includes(s)} onChange={() => toggleSubject(s)} />
+                {s}
+              </label>
+            ))}
+          </div>
+        ) : (
+          <div style={{ marginTop: 6 }}>
+            <span className="badge active" style={{ fontSize: 13 }}>সাধারণ গণিত</span>
+          </div>
+        )}
       </div>
 
       <label htmlFor="phone">মোবাইল নম্বর</label>

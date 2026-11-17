@@ -1181,3 +1181,46 @@ table.data td.center, table.data th.center { text-align: center; }
 .stat-card.mint .sc-v { color: #16a34a; }
 .stat-card.rose { background: #fef2f2; border-color: #fecaca; }
 .stat-card.rose .sc-v { color: #dc2626; }
+
+/* ── Subject selection (StudentForm) ──────────────────────────── */
+.subject-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.subject-check-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+.subject-check-item:has(:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+.subject-check-item input[type="checkbox"] {
+  accent-color: var(--brand);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.subjects-meta {
+  font-size: 12px;
+  color: var(--brand);
+}
+.dh-subjects {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}

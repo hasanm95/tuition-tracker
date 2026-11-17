@@ -32,6 +32,8 @@ export default function Dashboard() {
 
   useEffect(() => { load(); }, [year]);
 
+  const CLASS_ORDER = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '৯ম (HM)', '১০ম', '১০ম (HM)', 'পরীক্ষার্থী', 'পরীক্ষার্থী (HM)'];
+
   const classes = useMemo(() => {
     if (!students) return [];
     const map: Record<string, number> = {};
@@ -40,7 +42,16 @@ export default function Dashboard() {
       const cls = s.class || '—';
       map[cls] = (map[cls] || 0) + 1;
     }
-    return Object.entries(map).map(([name, count]) => ({ name, count }));
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => {
+        const ia = CLASS_ORDER.indexOf(a.name);
+        const ib = CLASS_ORDER.indexOf(b.name);
+        if (ia === -1 && ib === -1) return a.name.localeCompare(b.name);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+      });
   }, [students]);
 
   const searchResults = useMemo(() => {

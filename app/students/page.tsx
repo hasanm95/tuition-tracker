@@ -151,6 +151,7 @@ function StudentsInner() {
                       {s.isFree && <span className="badge free" style={{ fontSize: 11 }}>বিনা বেতনে</span>}
                     </div>
                     <div className="meta">রোল: {s.roll} | শাখা: {s.section || '—'}</div>
+                  {s.subjects && <div className="meta subjects-meta">{s.subjects}</div>}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}

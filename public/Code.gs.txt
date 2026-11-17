@@ -24,8 +24,8 @@ function getApiToken() {
 var BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
 
 // Bengali sheet headers — what appears in the Google Sheet
-var STUDENT_SHEET_HEADERS = ['StudentID','নাম','শ্রেণী','শাখা','রোল','শুরুর তারিখ','মাসিক ফি','অভিভাবকের নাম্বার','স্ট্যাটাস','অব্যাহতির তারিখ','শিক্ষাবর্ষ'];
-var STUDENT_KEYS          = ['id',       'name','class', 'section','roll','startDate',  'monthlyFee','phone',  'status',  'dischargeDate','academicYear'];
+var STUDENT_SHEET_HEADERS = ['StudentID','নাম','শ্রেণী','শাখা','রোল','শুরুর তারিখ','মাসিক ফি','অভিভাবকের নাম্বার','স্ট্যাটাস','অব্যাহতির তারিখ','শিক্ষাবর্ষ','বিষয়সমূহ'];
+var STUDENT_KEYS          = ['id',       'name','class', 'section','roll','startDate',  'monthlyFee','phone',  'status',  'dischargeDate','academicYear','subjects'];
 
 var PAYMENT_SHEET_HEADERS = ['PaymentID','StudentID','টাকা জমার তারিখ','টাকার পরিমাণ','এন্ট্রির সময়','মাসের নাম','মাসিক বেতন'];
 var PAYMENT_KEYS          = ['id',       'studentId','paidOn', 'amount', 'entryTime',   'monthName', 'targetFee'];
@@ -156,7 +156,8 @@ function addStudent(data) {
     phone: String(data.phone || '').trim(),
     status: String(data.status || 'সক্রিয়').trim(),
     dischargeDate: '',
-    academicYear: String(data.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear())))
+    academicYear: String(data.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear()))),
+    subjects: String(data.subjects || '').trim()
   };
   if (!row.name) throw 'নাম আবশ্যক।';
   sheet.appendRow(STUDENT_KEYS.map(function(k) { return row[k]; }));
@@ -194,7 +195,8 @@ function updateStudent(data) {
         dischargeDate: current.dischargeDate || '',
         academicYear: data.academicYear != null
           ? String(data.academicYear)
-          : (current.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear())))
+          : (current.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear()))),
+        subjects: data.subjects != null ? String(data.subjects).trim() : (current.subjects || '')
       };
       sheet.getRange(r + 1, 1, 1, STUDENT_KEYS.length)
         .setValues([STUDENT_KEYS.map(function(k) { return updated[k]; })]);
