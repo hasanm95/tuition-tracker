@@ -13,6 +13,7 @@ export default function Dashboard() {
   const { year } = useYear();
   const [students, setStudents] = useState<Student[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [q, setQ] = useState('');
 
   async function load() {
     setError(null);
@@ -42,6 +43,12 @@ export default function Dashboard() {
     return Object.entries(map).map(([name, count]) => ({ name, count }));
   }, [students]);
 
+  const searchResults = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (!needle || !students) return null;
+    return students.filter((s) => `${s.name} ${s.roll} ${s.class}`.toLowerCase().includes(needle));
+  }, [q, students]);
+
   const notConnected = isSetupError(error);
 
   return (
@@ -62,26 +69,61 @@ export default function Dashboard() {
         </div>
       )}
 
+      <input
+        className="search"
+        placeholder="🔍 নাম, রোল বা ক্লাস দিয়ে খুঁজুন…"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        style={{ marginBottom: 16 }}
+      />
+
       {students === null && !error && <ListSkeleton />}
 
-      {students !== null && classes.length === 0 && !error && (
-        <div className="card center muted">
-          {year} সালে কোনো শিক্ষার্থী নেই। &quot;ভর্তি&quot; বোতামে ক্লিক করে যোগ করুন।
-        </div>
-      )}
-
-      {classes.length > 0 && (
-        <div className="class-grid">
-          {classes.map(({ name, count }, i) => (
-            <Link key={name} href={`/students?class=${encodeURIComponent(name)}&year=${year}`}>
-              <div className={`class-card accent-${i % 6}`}>
-                <div className="class-avatar">🎓</div>
-                <div className="cn">{name}</div>
-                <div className="cc">{count} জন পড়ছে</div>
+      {searchResults !== null ? (
+        <div className="stack">
+          {searchResults.map((s) => (
+            <Link key={s.id} href={`/students/${s.id}`}>
+              <div className="card student-row">
+                <div>
+                  <div className="name">{s.name}</div>
+                  <div className="meta">{s.class} | রোল: {s.roll} | শাখা: {s.section || '—'}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}
+                  <span className={`badge ${s.status === 'অব্যাহতি প্রাপ্ত' ? 'inactive' : 'active'}`}>
+                    {s.status || 'সক্রিয়'}
+                  </span>
+                  <span style={{ color: 'var(--muted)' }}>›</span>
+                </div>
               </div>
             </Link>
           ))}
+          {searchResults.length === 0 && (
+            <div className="card center muted">কোনো শিক্ষার্থী মিলেনি।</div>
+          )}
         </div>
+      ) : (
+        <>
+          {students !== null && classes.length === 0 && !error && (
+            <div className="card center muted">
+              {year} সালে কোনো শিক্ষার্থী নেই। &quot;ভর্তি&quot; বোতামে ক্লিক করে যোগ করুন।
+            </div>
+          )}
+
+          {classes.length > 0 && (
+            <div className="class-grid">
+              {classes.map(({ name, count }, i) => (
+                <Link key={name} href={`/students?class=${encodeURIComponent(name)}&year=${year}`}>
+                  <div className={`class-card accent-${i % 6}`}>
+                    <div className="class-avatar">🎓</div>
+                    <div className="cn">{name}</div>
+                    <div className="cc">{count} জন পড়ছে</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </>
   );

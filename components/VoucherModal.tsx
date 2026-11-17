@@ -63,24 +63,25 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
               <div><span>শ্রেণী:</span> <b>{student.class}{student.section ? ` (${student.section})` : ''}</b></div>
               <div><span>রোল:</span> <b>{student.roll || '—'}</b></div>
               <div><span>মূল বেতন:</span> <b>{student.monthlyFee > 0 ? money(student.monthlyFee) : 'বেতন নাই'}</b></div>
+              <div><span>শুরুর তারিখ:</span> <b>{student.startDate ? formatDate(student.startDate) : '—'}</b></div>
             </div>
 
             <table className="vc-table">
               <thead>
                 <tr>
                   <th>মাসের নাম</th>
-                  <th style={{ textAlign: 'right' }}>মাসিক বেতন (৳)</th>
+                  <th>মাসিক বেতন (৳)</th>
                   <th>আদায়ের তারিখ</th>
-                  <th style={{ textAlign: 'right' }}>আদায়কৃত টাকা (৳)</th>
+                  <th>আদায়কৃত টাকা (৳)</th>
                 </tr>
               </thead>
               <tbody>
                 {student.payments.map((p, i) => (
                   <tr key={p.id ?? i}>
                     <td>{p.monthName || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{p.targetFee ? money(p.targetFee) : '—'}</td>
+                    <td>{p.targetFee ? money(p.targetFee) : '—'}</td>
                     <td>{formatDate(p.paidOn)}</td>
-                    <td style={{ textAlign: 'right' }}>{money(p.amount)}</td>
+                    <td>{money(p.amount)}</td>
                   </tr>
                 ))}
                 {student.payments.length === 0 && (
