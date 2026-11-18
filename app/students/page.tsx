@@ -33,10 +33,14 @@ function StudentsInner() {
 
   const { students: all, error, refreshing, load } = useStudents(effYear);
 
+  const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
+  const isAdvanced = ADVANCED_CLASSES.has(classFilter);
+
   // search + filters
   const [q, setQ] = useState('');
   const [section, setSection] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
+  const [subjectFilter, setSubjectFilter] = useState('');
 
   // modals
   const [feeModal, setFeeModal] = useState(false);
@@ -56,19 +60,35 @@ function StudentsInner() {
     return Array.from(set).sort();
   }, [classStudents]);
 
+  const subjectTabs = useMemo(() => {
+    if (!isAdvanced) return [];
+    const set = new Set<string>();
+    classStudents.forEach((s) => set.add((s.subjects || '').trim() || 'সাধারণ গণিত'));
+    return Array.from(set).sort();
+  }, [classStudents, isAdvanced]);
+
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return classStudents.filter((s) => {
       if (section !== 'all' && s.section !== section) return false;
       if (status === 'active' && s.status === 'অব্যাহতি প্রাপ্ত') return false;
       if (status === 'inactive' && s.status !== 'অব্যাহতি প্রাপ্ত') return false;
+      if (subjectFilter) {
+        const sub = (s.subjects || '').trim() || 'সাধারণ গণিত';
+        if (sub !== subjectFilter) return false;
+      }
       if (needle) {
         const hay = `${s.name} ${s.roll}`.toLowerCase();
         if (!hay.includes(needle)) return false;
       }
       return true;
+    }).sort((a, b) => {
+      const ra = Number(a.roll) || 0;
+      const rb = Number(b.roll) || 0;
+      if (ra !== rb) return ra - rb;
+      return (a.section || '').localeCompare(b.section || ''); // ক before খ on same roll
     });
-  }, [classStudents, q, section, status]);
+  }, [classStudents, q, section, status, subjectFilter]);
 
   const notConnected = isSetupError(error);
 
@@ -123,6 +143,26 @@ function StudentsInner() {
             </select>
           </div>
 
+          {isAdvanced && subjectTabs.length > 1 && (
+            <div className="subject-tabs">
+              <button
+                className={`subject-tab${!subjectFilter ? ' active' : ''}`}
+                onClick={() => setSubjectFilter('')}
+              >
+                সব বিষয়
+              </button>
+              {subjectTabs.map((sub) => (
+                <button
+                  key={sub}
+                  className={`subject-tab${subjectFilter === sub ? ' active' : ''}`}
+                  onClick={() => setSubjectFilter(sub)}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          )}
+
           {all === null && <ListSkeleton />}
 
           {all !== null && (
@@ -139,7 +179,7 @@ function StudentsInner() {
                       {s.isFree && <span className="badge free" style={{ fontSize: 11 }}>বিনা বেতনে</span>}
                     </div>
                     <div className="meta">রোল: {s.roll} | শাখা: {s.section || '—'}</div>
-                  <div className="meta subjects-meta">{s.subjects || 'সাধারণ গণিত'}</div>
+                  <div className="meta subjects-meta">{(s.subjects || '').trim() || 'সাধারণ গণিত'}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}
