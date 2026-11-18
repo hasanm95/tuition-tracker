@@ -1,58 +1,44 @@
-// Minimal service worker: makes the app installable and gives an offline shell.
-// Strategy: network-first for navigations (always try fresh data), cache fallback
-// when offline. Static assets are cached as they are fetched.
+const CACHE = 'tt-static-v1';
 
-const CACHE = 'fee-tracker-v1';
-const SHELL = ['/', '/students', '/students/new', '/manifest.json'];
+self.addEventListener('install', () => self.skipWaiting());
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL).catch(() => undefined))
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  if (request.method !== 'GET') return;
-
+self.addEventListener('fetch', (e) => {
+  const { request } = e;
   const url = new URL(request.url);
-  // Never cache API responses — fee data must be fresh.
-  if (url.pathname.startsWith('/api/')) return;
 
-  // Navigations: network-first, fall back to cached shell when offline.
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return; // IndexedDB handles API caching
+
+  // Static assets are content-hashed — cache-first forever
+  if (url.pathname.startsWith('/_next/static/')) {
+    e.respondWith(
+      caches.match(request).then(
+        (hit) => hit || fetch(request).then((res) => {
+          if (res.ok) caches.open(CACHE).then((c) => c.put(request, res.clone()));
           return res;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/')))
+      )
     );
     return;
   }
 
-  // Other GETs (JS/CSS/images): cache-first, then network.
-  event.respondWith(
-    caches.match(request).then(
-      (cached) =>
-        cached ||
-        fetch(request).then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+  // Navigation pages — network-first, cached shell as fallback
+  if (request.mode === 'navigate') {
+    e.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.ok) caches.open(CACHE).then((c) => c.put(request, res.clone()));
           return res;
         })
-    )
-  );
+        .catch(() => caches.match(request))
+    );
+  }
 });

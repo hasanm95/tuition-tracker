@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import type { Payment } from '@/lib/types';
 import { todayLocal } from '@/lib/format';
+import { queueMutation } from '@/lib/syncQueue';
 
 const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
 
@@ -15,9 +17,13 @@ interface Props {
   /** Student's enrolment date (yyyy-mm-dd); dues start from this month. */
   startDate?: string;
   onSuccess?: () => void;
+  /** Called immediately before the fetch with a temporary payment object. */
+  onOptimistic?: (p: Payment) => void;
+  /** Called if the fetch fails — roll back the optimistic update. */
+  onRollback?: () => void;
 }
 
-export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMonths, startDate, onSuccess }: Props) {
+export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMonths, startDate, onSuccess, onOptimistic, onRollback }: Props) {
   // Effective fee for a given month: override if set, else base monthly fee.
   const feeFor = (m: string) => monthFees?.[m] ?? monthlyFee ?? 0;
 
@@ -72,6 +78,15 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
       return;
     }
     setSaving(true);
+    onOptimistic?.({
+      id: `pending-${Date.now()}`,
+      studentId,
+      amount: Number(amount),
+      paidOn,
+      monthName,
+      targetFee: Number(targetFee || amount),
+      entryTime: new Date().toISOString(),
+    });
     try {
       const res = await fetch('/api/payments', {
         method: 'POST',
@@ -96,7 +111,18 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
       setSuccess(true);
       onSuccess?.();
     } catch (err: any) {
-      setError(err.message);
+      const offline = !navigator.onLine || err instanceof TypeError;
+      if (offline) {
+        await queueMutation('/api/payments', 'POST', {
+          studentId, amount: Number(amount), paidOn, monthName,
+          targetFee: Number(targetFee || amount),
+        });
+        setError('অফলাইন — নেটওয়ার্ক ফিরলে স্বয়ংক্রিয়ভাবে পাঠানো হবে।');
+        // Keep the optimistic row; it'll clear when queue replays and load() fires.
+      } else {
+        onRollback?.();
+        setError(err.message);
+      }
     } finally {
       setSaving(false);
     }

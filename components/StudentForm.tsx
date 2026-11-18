@@ -19,7 +19,7 @@ const SUBJECT_OPTIONS = ['সাধারণ গণিত', 'উচ্চতর 
 const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
 const isAdvanced = (cls: string) => ADVANCED_CLASSES.has(cls);
 const defaultSubject = (cls: string, existing?: string) =>
-  isAdvanced(cls) ? (existing?.trim() || '') : 'সাধারণ গণিত';
+  existing?.trim() || 'সাধারণ গণিত';
 
 export default function StudentForm({ student }: Props) {
   const router = useRouter();

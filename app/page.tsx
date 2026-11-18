@@ -1,36 +1,18 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from './providers';
 import { HOTLINE } from '@/lib/config';
+import { useStudents } from '@/lib/useStudents';
 import ListSkeleton from '@/components/ListSkeleton';
 import BackendNotice from '@/components/BackendNotice';
 
 export default function Dashboard() {
   const { year } = useYear();
-  const [students, setStudents] = useState<Student[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { students, error, refreshing, load } = useStudents(year);
   const [q, setQ] = useState('');
-
-  async function load() {
-    setError(null);
-    setStudents(null);
-    try {
-      const res = await fetch(`/api/students?year=${year}`, { cache: 'no-store' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
-      }
-      setStudents(await res.json());
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-
-  useEffect(() => { load(); }, [year]);
 
   const CLASS_ORDER = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '১০ম', 'পরীক্ষার্থী'];
 
@@ -69,7 +51,7 @@ export default function Dashboard() {
           <h1>শ্রেণীর তালিকা <span className="accent">({year} সাল)</span></h1>
           <div className="hl">হটলাইন: {HOTLINE}</div>
         </div>
-        <button className="pill-btn" onClick={load}>↻ রিফ্রেশ</button>
+        <button className="pill-btn" onClick={load}>{refreshing ? '↻ আপডেট হচ্ছে…' : '↻ রিফ্রেশ'}</button>
       </div>
 
       {notConnected && <BackendNotice error={error} onRetry={load} />}

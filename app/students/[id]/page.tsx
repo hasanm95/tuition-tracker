@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import type { StudentDetail, Payment } from '@/lib/types';
+import type { Payment, StudentDetail } from '@/lib/types';
 import { money, formatDate } from '@/lib/format';
 import { isSetupError } from '@/lib/errors';
+import { useStudentDetail } from '@/lib/useStudentDetail';
+import { invalidateStudents } from '@/lib/useStudents';
+import { onQueueReplayed } from '@/lib/events';
 import PaymentForm from '@/components/PaymentForm';
 import BackendNotice from '@/components/BackendNotice';
 import VoucherModal from '@/components/VoucherModal';
@@ -13,26 +16,27 @@ import VoucherModal from '@/components/VoucherModal';
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [student, setStudent] = useState<StudentDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { student, error, refreshing, load } = useStudentDetail(id);
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [voucher, setVoucher] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
 
-  async function load() {
-    setError(null);
-    try {
-      const res = await fetch(`/api/students/${id}`, { cache: 'no-store' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
-      }
-      setStudent(await res.json());
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-  useEffect(() => { load(); }, [id]);
+  const refresh = useCallback(async () => {
+    await load();
+    setPendingPayments([]);
+  }, [load]);
+
+  const addOptimistic = useCallback((p: Payment) => {
+    setPendingPayments((prev) => [...prev, p]);
+  }, []);
+
+  const rollback = useCallback(() => {
+    setPendingPayments((prev) => prev.slice(0, -1));
+  }, []);
+
+  // When an offline queue is replayed globally, reload this student's data.
+  useEffect(() => onQueueReplayed(refresh), [refresh]);
 
   async function toggleStatus() {
     if (!student) return;
@@ -47,6 +51,7 @@ export default function StudentDetailPage() {
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'ব্যর্থ হয়েছে।');
       await load();
+      await invalidateStudents(student!.academicYear ? Number(student!.academicYear) : new Date().getFullYear());
     } catch (err: any) { alert(err.message); } finally { setBusy(false); }
   }
 
@@ -57,6 +62,7 @@ export default function StudentDetailPage() {
     try {
       const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'মুছতে ব্যর্থ।');
+      await invalidateStudents(student!.academicYear ? Number(student!.academicYear) : new Date().getFullYear());
       router.push('/');
     } catch (err: any) { alert(err.message); setBusy(false); }
   }
@@ -95,6 +101,7 @@ export default function StudentDetailPage() {
       {student && (
         <>
           <div className="detail-actions">
+            {refreshing && <span className="refresh-dot" title="আপডেট হচ্ছে…" />}
             <button className="pill-btn brand" onClick={() => setVoucher(true)}>📄 ভাউচার (JPG/PDF)</button>
             <Link href={`/students/${id}/edit`} className="pill-btn amber">✏️ এডিট</Link>
             <button className="pill-btn gray" onClick={toggleStatus} disabled={busy}>
@@ -113,9 +120,7 @@ export default function StudentDetailPage() {
                 <span className={`badge ${discharged ? 'inactive' : 'active'}`}>{student.status || 'সক্রিয়'}</span>
                 {student.academicYear && <span className="tag-dark">{student.academicYear} সাল</span>}
               </div>
-              <div className="dh-subjects">
-                বিষয়: {student.subjects || (['৬ষ্ঠ','৭ম','৮ম'].includes(student.class) ? 'সাধারণ গণিত' : '— (এডিট থেকে সেট করুন)')}
-              </div>
+              <div className="dh-subjects">বিষয়: {student.subjects || 'সাধারণ গণিত'}</div>
             </div>
             {student.phone && (
               <a href={`tel:${student.phone}`} className="pill-btn green">📞 {student.phone}</a>
@@ -143,7 +148,9 @@ export default function StudentDetailPage() {
             monthFees={student.monthFees}
             paidMonths={student.payments.map((p) => p.monthName).filter(Boolean)}
             startDate={student.startDate}
-            onSuccess={load}
+            onSuccess={refresh}
+            onOptimistic={addOptimistic}
+            onRollback={rollback}
           />
 
           <div className="section-head"><h2 style={{ fontSize: 17 }}>পূর্বে টাকা জমার বিস্তারিত তালিকা:</h2></div>
@@ -160,19 +167,24 @@ export default function StudentDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {student.payments.map((p, i) => (
-                  <tr key={p.id ?? i}>
-                    <td className="center">{i + 1}</td>
-                    <td>{p.monthName || '—'}</td>
-                    <td className="num">{p.targetFee ? money(p.targetFee) : '—'}</td>
-                    <td>{formatDate(p.paidOn)}</td>
-                    <td className="num">{money(p.amount)}</td>
-                    <td className="center">
-                      <button className="cell-btn" style={{ background: '#ef4444' }} disabled={deletingPayment === p.id} onClick={() => deletePayment(p)}>🗑</button>
-                    </td>
-                  </tr>
-                ))}
-                {student.payments.length === 0 && (
+                {[...student.payments, ...pendingPayments].map((p, i) => {
+                  const isPending = p.id.startsWith('pending-');
+                  return (
+                    <tr key={p.id ?? i} className={isPending ? 'row-pending' : ''}>
+                      <td className="center">{i + 1}</td>
+                      <td>{p.monthName || '—'}{isPending && <span className="saving-badge">সংরক্ষণ হচ্ছে…</span>}</td>
+                      <td className="num">{p.targetFee ? money(p.targetFee) : '—'}</td>
+                      <td>{formatDate(p.paidOn)}</td>
+                      <td className="num">{money(p.amount)}</td>
+                      <td className="center">
+                        {!isPending && (
+                          <button className="cell-btn" style={{ background: '#ef4444' }} disabled={deletingPayment === p.id} onClick={() => deletePayment(p)}>🗑</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {student.payments.length === 0 && pendingPayments.length === 0 && (
                   <tr><td colSpan={6} className="center muted">কোনো ডাটা নেই</td></tr>
                 )}
               </tbody>

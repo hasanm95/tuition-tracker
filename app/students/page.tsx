@@ -6,6 +6,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
+import { useStudents } from '@/lib/useStudents';
 import { BN_MONTHS, COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
 import { formatDate, formatDateBnSlash, todayLocal } from '@/lib/format';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
@@ -20,8 +21,6 @@ function StudentsInner() {
   const yearParam = searchParams.get('year');
   const effYear = yearParam ? Number(yearParam) : year;
 
-  const [all, setAll] = useState<Student[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const tab: 'students' | 'exam' = searchParams.get('tab') === 'exam' ? 'exam' : 'students';
@@ -31,6 +30,8 @@ function StudentsInner() {
     if (t !== 'exam') { p.delete('ed'); p.delete('et'); }
     router.replace(`${pathname}?${p.toString()}`);
   };
+
+  const { students: all, error, refreshing, load } = useStudents(effYear);
 
   // search + filters
   const [q, setQ] = useState('');
@@ -42,22 +43,6 @@ function StudentsInner() {
   const [examModal, setExamModal] = useState(false);
   const [examEdit, setExamEdit] = useState<ExamInitial | null>(null);
   const [examReload, setExamReload] = useState(0);
-
-  async function load() {
-    setError(null);
-    setAll(null);
-    try {
-      const res = await fetch(`/api/students?year=${effYear}`, { cache: 'no-store' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'শিক্ষার্থী লোড করা যায়নি।');
-      }
-      setAll(await res.json());
-    } catch (err: any) {
-      setError(err.message);
-    }
-  }
-  useEffect(() => { load(); }, [effYear]);
 
   // students of this class
   const classStudents = useMemo(
@@ -95,9 +80,12 @@ function StudentsInner() {
 
       <div className="section-head">
         <h1>{classFilter || 'শিক্ষার্থী'} <span className="accent">({effYear} সাল)</span></h1>
-        <button className="pill-btn amber" onClick={() => setFeeModal(true)}>
-          🗓 নির্দিষ্ট মাসের বেতন পরিবর্তন / ছুটি
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {refreshing && <span className="refresh-dot" title="আপডেট হচ্ছে…" />}
+          <button className="pill-btn amber" onClick={() => setFeeModal(true)}>
+            🗓 নির্দিষ্ট মাসের বেতন পরিবর্তন / ছুটি
+          </button>
+        </div>
       </div>
 
       <div className="tabs">
@@ -151,9 +139,7 @@ function StudentsInner() {
                       {s.isFree && <span className="badge free" style={{ fontSize: 11 }}>বিনা বেতনে</span>}
                     </div>
                     <div className="meta">রোল: {s.roll} | শাখা: {s.section || '—'}</div>
-                  {(s.subjects || ['৬ষ্ঠ','৭ম','৮ম'].includes(s.class)) && (
-                    <div className="meta subjects-meta">{s.subjects || 'সাধারণ গণিত'}</div>
-                  )}
+                  <div className="meta subjects-meta">{s.subjects || 'সাধারণ গণিত'}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}
