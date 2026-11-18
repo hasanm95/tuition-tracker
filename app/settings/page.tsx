@@ -39,14 +39,6 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // password change
-  const [newPass, setNewPass] = useState('');
-  const [newPass2, setNewPass2] = useState('');
-  const [confirmPhone, setConfirmPhone] = useState('');
-  const [pBusy, setPBusy] = useState(false);
-  const [pMsg, setPMsg] = useState<string | null>(null);
-  const [pErr, setPErr] = useState<string | null>(null);
-
   async function load() {
     setError(null);
     try {
@@ -94,24 +86,6 @@ export default function SettingsPage() {
       setSig(''); setPreview(null);
       setMsg('স্বাক্ষর মুছে ফেলা হয়েছে।');
     } catch (err: any) { setError(err.message); } finally { setBusy(false); }
-  }
-
-  async function changePass() {
-    setPMsg(null); setPErr(null);
-    if (newPass.trim().length < 4) { setPErr('পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের দিন।'); return; }
-    if (newPass.trim() !== newPass2.trim()) { setPErr('দুটি পাসওয়ার্ড মিলছে না।'); return; }
-    if (!confirmPhone.trim()) { setPErr('পরিচালকের মোবাইল নম্বর (কনফারমেশন) দিন।'); return; }
-    setPBusy(true);
-    try {
-      const res = await fetch('/api/password', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: confirmPhone.trim(), newPass: newPass.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'পরিবর্তন ব্যর্থ।');
-      setPMsg('✅ ' + (data.message || 'পাসওয়ার্ড পরিবর্তিত হয়েছে!'));
-      setNewPass(''); setNewPass2(''); setConfirmPhone('');
-    } catch (err: any) { setPErr(err.message); } finally { setPBusy(false); }
   }
 
   return (
@@ -166,29 +140,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="pay-section-title">🔒 পাসওয়ার্ড পরিবর্তন</div>
-        <p className="hl" style={{ margin: '0 0 12px', fontSize: 13 }}>
-          পাসওয়ার্ড পরিবর্তন করতে পরিচালকের মোবাইল নম্বর (কনফারমেশন) দিতে হবে।
-          সঠিক নম্বর না হলে পরিবর্তন হবে না।
-        </p>
-
-        {pErr && <div className="error">{pErr}</div>}
-        {pMsg && <div style={{ color: 'var(--ok)', background: 'var(--ok-bg)', padding: '10px 14px', borderRadius: 10, margin: '0 0 12px', fontSize: 14 }}>{pMsg}</div>}
-
-        <label className="hl" style={{ display: 'block', margin: '4px 0 6px', fontSize: 13 }}>নতুন পাসওয়ার্ড</label>
-        <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} placeholder="কমপক্ষে ৪ অক্ষর" autoComplete="new-password" />
-
-        <label className="hl" style={{ display: 'block', margin: '12px 0 6px', fontSize: 13 }}>নতুন পাসওয়ার্ড (আবার)</label>
-        <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} placeholder="আবার লিখুন" autoComplete="new-password" />
-
-        <label className="hl" style={{ display: 'block', margin: '12px 0 6px', fontSize: 13 }}>পরিচালকের মোবাইল নম্বর (কনফারমেশন)</label>
-        <input inputMode="tel" value={confirmPhone} onChange={(e) => setConfirmPhone(e.target.value)} placeholder="যেমন: 01812665475" autoComplete="off" />
-
-        <button className="btn" onClick={changePass} disabled={pBusy} style={{ marginTop: 16, width: 'auto' }}>
-          {pBusy ? 'পরিবর্তন হচ্ছে…' : 'পাসওয়ার্ড পরিবর্তন করুন'}
-        </button>
-      </div>
     </>
   );
 }
