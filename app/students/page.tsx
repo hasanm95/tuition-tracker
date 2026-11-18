@@ -143,7 +143,7 @@ function StudentsInner() {
             </select>
           </div>
 
-          {isAdvanced && subjectTabs.length > 1 && (
+          {isAdvanced && subjectTabs.length > 0 && (
             <div className="subject-tabs">
               <button
                 className={`subject-tab${!subjectFilter ? ' active' : ''}`}
