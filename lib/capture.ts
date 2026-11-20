@@ -9,7 +9,10 @@
 //     pasted the whole image at a computed height so the bottom was lost. We now
 //     slice the canvas across as many A4 pages as needed.
 
-const EXPORT_WIDTH = 760;
+// Narrower capture → the sheet is scaled UP to fill the A4/phone width, so the
+// same text renders larger and stays legible on a phone. Keep it wide enough
+// (>480) that the desktop layout, not the mobile stack, is captured.
+const EXPORT_WIDTH = 620;
 
 /** Render a printable node to a canvas at a fixed width so nothing is clipped. */
 export async function captureSheet(node: HTMLElement): Promise<HTMLCanvasElement> {

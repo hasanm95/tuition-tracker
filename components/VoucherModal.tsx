@@ -14,6 +14,12 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
 
   const safeName = (student.name || 'student').replace(/[\\/:*?"<>|]/g, '').slice(0, 40);
 
+  // Latest deposit = total collected on the most recent payment date.
+  const lastDate = student.payments.reduce((d, p) => (p.paidOn > d ? p.paidOn : d), '');
+  const lastDeposit = student.payments
+    .filter((p) => p.paidOn === lastDate)
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
   async function downloadJPG() {
     setBusy('jpg');
     try {
@@ -94,6 +100,9 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
             </table>
 
             <div className="vc-totals">
+              {lastDate && (
+                <div className="vc-tot last"><span>সর্বশেষ জমা ({formatDate(lastDate)})</span><b>{money(lastDeposit)}</b></div>
+              )}
               <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
               <div className="vc-tot due"><span>বকেয়া</span><b>{money(Math.max(0, student.due))}</b></div>
             </div>

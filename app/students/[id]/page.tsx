@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import type { Payment, StudentDetail } from '@/lib/types';
 import { money, formatDate } from '@/lib/format';
 import { isSetupError } from '@/lib/errors';
-import { useStudentDetail } from '@/lib/useStudentDetail';
+import { useStudentDetail, invalidateStudentDetail } from '@/lib/useStudentDetail';
 import { invalidateStudents } from '@/lib/useStudents';
 import { onQueueReplayed } from '@/lib/events';
 import PaymentForm from '@/components/PaymentForm';
@@ -19,6 +19,7 @@ export default function StudentDetailPage() {
   const { student, error, refreshing, load } = useStudentDetail(id);
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [voucher, setVoucher] = useState(false);
   const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
 
@@ -58,13 +59,14 @@ export default function StudentDetailPage() {
   async function deleteStudent() {
     if (!student) return;
     if (!confirm(`"${student.name}" কে স্থায়ীভাবে মুছে ফেলবেন? এটি ফেরানো যাবে না।`)) return;
-    setBusy(true);
+    setBusy(true); setDeleting(true);
     try {
       const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'মুছতে ব্যর্থ।');
-      await invalidateStudents(student!.academicYear ? Number(student!.academicYear) : new Date().getFullYear());
+      await invalidateStudents();
+      await invalidateStudentDetail(id);
       router.push('/');
-    } catch (err: any) { alert(err.message); setBusy(false); }
+    } catch (err: any) { alert(err.message); setBusy(false); setDeleting(false); }
   }
 
   async function deletePayment(p: Payment) {
@@ -117,7 +119,9 @@ export default function StudentDetailPage() {
             <button className="pill-btn gray" onClick={toggleStatus} disabled={busy}>
               {discharged ? '↩ পুনরায় সক্রিয়' : 'অব্যাহতি'}
             </button>
-            <button className="pill-btn red" onClick={deleteStudent} disabled={busy}>🗑 ডিলিট</button>
+            <button className="pill-btn red" onClick={deleteStudent} disabled={busy}>
+              {deleting ? '⏳ মুছে ফেলা হচ্ছে…' : '🗑 ডিলিট'}
+            </button>
           </div>
 
           <div className="detail-head">

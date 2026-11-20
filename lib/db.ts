@@ -68,6 +68,27 @@ export async function setCache<T>(key: string, data: T): Promise<void> {
   } catch {}
 }
 
+// Delete every cached entry whose key starts with `prefix`. Used to purge all
+// per-year student lists at once, so a deleted student can't linger in a list
+// cached under a different year than the one invalidated.
+export async function deleteCacheByPrefix(prefix: string): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(CACHE_STORE, 'readwrite');
+      const store = tx.objectStore(CACHE_STORE);
+      const req = store.getAllKeys();
+      req.onsuccess = () => {
+        for (const k of req.result as IDBValidKey[]) {
+          if (typeof k === 'string' && k.startsWith(prefix)) store.delete(k);
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {}
+}
+
 export async function deleteCache(key: string): Promise<void> {
   try {
     const db = await openDB();

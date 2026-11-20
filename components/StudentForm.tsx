@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
 import { todayLocal } from '@/lib/format';
+import { YEAR_OPTIONS as YEARS } from '@/lib/config';
 import BackendNotice from '@/components/BackendNotice';
 
 interface Props {
@@ -13,8 +14,6 @@ interface Props {
 
 const CLASS_OPTIONS = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '১০ম', 'পরীক্ষার্থী'];
 const SECTION_OPTIONS = ['ক', 'খ', 'গ', 'ঘ', 'ঙ'];
-const YEARS = [2024, 2025, 2026, 2027, 2028];
-
 const SUBJECT_OPTIONS = ['সাধারণ গণিত', 'উচ্চতর গণিত', 'পদার্থবিজ্ঞান', 'রসায়ন', 'জীববিজ্ঞান'];
 const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
 const isAdvanced = (cls: string) => ADVANCED_CLASSES.has(cls);
@@ -91,6 +90,8 @@ export default function StudentForm({ student }: Props) {
     <form onSubmit={submit} className="card">
       {error && <div className="error">{error}</div>}
 
+      {/* Disable every field (not just the submit button) while the save is in flight. */}
+      <fieldset disabled={saving} style={{ display: 'contents' }}>
       <label htmlFor="name">নাম *</label>
       <input
         id="name"
@@ -213,6 +214,7 @@ export default function StudentForm({ student }: Props) {
           বাতিল
         </button>
       </div>
+      </fieldset>
     </form>
   );
 }

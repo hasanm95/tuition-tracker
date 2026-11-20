@@ -1,4 +1,4 @@
-const CACHE = 'tt-static-v2';
+const CACHE = 'tt-static-v3';
 
 self.addEventListener('install', () => self.skipWaiting());
 

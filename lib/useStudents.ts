@@ -66,8 +66,13 @@ export function useStudents(year: number): UseStudentsResult {
   return { students, error, refreshing, load };
 }
 
-/** Call this after any mutation that modifies the student list for a year. */
-export async function invalidateStudents(year: number) {
-  const { deleteCache } = await import('./db');
-  await deleteCache(cacheKey(year));
+/**
+ * Call after any mutation that modifies a student list. Clears every year's
+ * cached list (not just one), so a deleted/changed student can't survive in a
+ * list cached under a different academic year. `year` is kept for call sites
+ * but no longer needed.
+ */
+export async function invalidateStudents(_year?: number) {
+  const { deleteCacheByPrefix } = await import('./db');
+  await deleteCacheByPrefix('students-');
 }

@@ -394,7 +394,7 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
 
             <div className="es-foot">
               <div className="es-foot-meta">
-                <div>তারিখ: {formatDateBnSlash(result.examDate)}</div>
+                <div>তারিখ: {formatDateBnSlash(new Date())}</div>
                 <div>মোবাইল: {HOTLINE}</div>
               </div>
               <div className="sheet-sign">

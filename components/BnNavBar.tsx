@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { useYear } from '@/app/providers';
-import { COACHING_NAME } from '@/lib/config';
-
-const YEARS = [2024, 2025, 2026, 2027, 2028];
+import { COACHING_NAME, YEAR_OPTIONS as YEARS } from '@/lib/config';
 
 export default function BnNavBar() {
   const { year, setYear } = useYear();
