@@ -207,11 +207,19 @@ function updateStudent(data) {
   throw 'শিক্ষার্থী পাওয়া যায়নি।';
 }
 
+// deleteRow() silently skips rows hidden under an active sheet filter, so the
+// filter must be removed before deleting. The app does not rely on filters.
+function dropFilter(sheet) {
+  var f = sheet.getFilter();
+  if (f) f.remove();
+}
+
 function deleteStudent(id) {
   if (!id) throw 'id আবশ্যক।';
   ['Students', 'Payments', 'ExamMarks'].forEach(function(name) {
     var headers = name === 'Students' ? STUDENT_SHEET_HEADERS : (name === 'Payments' ? PAYMENT_SHEET_HEADERS : EXAM_SHEET_HEADERS);
     var sheet = tab(name, headers);
+    dropFilter(sheet);
     var values = sheet.getDataRange().getValues();
     var col = (name === 'ExamMarks') ? 4 : (name === 'Payments' ? 1 : 0);
     for (var r = values.length - 1; r >= 1; r--) {
@@ -326,6 +334,7 @@ function updatePayment(data) {
 function deletePayment(id) {
   if (!id) throw 'id আবশ্যক।';
   var sheet = tab('Payments', PAYMENT_SHEET_HEADERS);
+  dropFilter(sheet);
   var values = sheet.getDataRange().getValues();
   for (var r = 1; r < values.length; r++) {
     if (String(values[r][0]) === String(id)) { sheet.deleteRow(r + 1); return true; }
@@ -431,6 +440,7 @@ function saveExamMarks(data) {
 // Delete every mark row of one exam (year + class + date + title).
 function deleteExam(data) {
   var sheet = tab('ExamMarks', EXAM_SHEET_HEADERS);
+  dropFilter(sheet);
   var values = sheet.getDataRange().getValues();
   var yr = String(data.academicYear || data.year || '').trim();
   var cls = String(data['class'] || '').trim();
