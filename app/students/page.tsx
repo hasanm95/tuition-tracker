@@ -33,9 +33,6 @@ function StudentsInner() {
 
   const { students: all, error, refreshing, load } = useStudents(effYear);
 
-  const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
-  const isAdvanced = ADVANCED_CLASSES.has(classFilter);
-
   // filters (name/roll search lives on the dashboard)
   const [section, setSection] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
@@ -59,12 +56,12 @@ function StudentsInner() {
     return Array.from(set).sort();
   }, [classStudents]);
 
+  // Subject tabs appear only when this class mixes more than one subject.
   const subjectTabs = useMemo(() => {
-    if (!isAdvanced) return [];
     const set = new Set<string>();
     classStudents.forEach((s) => set.add((s.subjects || '').trim() || 'সাধারণ গণিত'));
     return Array.from(set).sort();
-  }, [classStudents, isAdvanced]);
+  }, [classStudents]);
 
   const shown = useMemo(() => {
     return classStudents.filter((s) => {
@@ -130,7 +127,7 @@ function StudentsInner() {
             </select>
           </div>
 
-          {isAdvanced && subjectTabs.length > 0 && (
+          {subjectTabs.length > 1 && (
             <div className="subject-tabs">
               <button
                 className={`subject-tab${!subjectFilter ? ' active' : ''}`}
