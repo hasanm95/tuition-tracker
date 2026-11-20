@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import type { StudentDetail } from '@/lib/types';
-import { money, formatDate, formatDateBnSlash } from '@/lib/format';
+import { money, formatDate } from '@/lib/format';
 import { COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
 import { useSignature } from '@/lib/useSignature';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
@@ -109,7 +109,7 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
 
             <div className="vc-foot">
               <div className="vc-foot-meta">
-                <div>তারিখ: {formatDateBnSlash(new Date())}</div>
+                <div>তারিখ: {formatDate(new Date())}</div>
                 <div>মোবাইল: {HOTLINE}</div>
               </div>
               <div className="vc-sign">

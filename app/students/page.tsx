@@ -8,7 +8,7 @@ import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
 import { useStudents } from '@/lib/useStudents';
 import { BN_MONTHS, COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
-import { formatDate, formatDateBnSlash, todayLocal } from '@/lib/format';
+import { formatDate, todayLocal } from '@/lib/format';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
 import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
@@ -394,7 +394,7 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
 
             <div className="es-foot">
               <div className="es-foot-meta">
-                <div>তারিখ: {formatDateBnSlash(new Date())}</div>
+                <div>তারিখ: {formatDate(new Date())}</div>
                 <div>মোবাইল: {HOTLINE}</div>
               </div>
               <div className="sheet-sign">
