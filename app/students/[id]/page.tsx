@@ -83,7 +83,17 @@ export default function StudentDetailPage() {
     <>
       <div className="breadcrumbs" style={{ marginTop: 14 }}>
         <Link href="/" className="bc-btn">🏠 হোম</Link>
-        <button className="bc-btn" onClick={() => router.back()}>← তালিকা</button>
+        {/* Go to the class list directly — router.back() could land on the edit page we came through. */}
+        <button
+          className="bc-btn"
+          onClick={() =>
+            router.push(
+              student
+                ? `/students?class=${encodeURIComponent(student.class.replace(/ \(HM\)$/, ''))}&year=${student.academicYear || new Date().getFullYear()}`
+                : '/students'
+            )
+          }
+        >← তালিকা</button>
       </div>
 
       {error && (isSetupError(error)

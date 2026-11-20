@@ -113,12 +113,18 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
     } catch (err: any) {
       const offline = !navigator.onLine || err instanceof TypeError;
       if (offline) {
-        await queueMutation('/api/payments', 'POST', {
-          studentId, amount: Number(amount), paidOn, monthName,
-          targetFee: Number(targetFee || amount),
-        });
-        setError('অফলাইন — নেটওয়ার্ক ফিরলে স্বয়ংক্রিয়ভাবে পাঠানো হবে।');
-        // Keep the optimistic row; it'll clear when queue replays and load() fires.
+        try {
+          await queueMutation('/api/payments', 'POST', {
+            studentId, amount: Number(amount), paidOn, monthName,
+            targetFee: Number(targetFee || amount),
+          });
+          setError('অফলাইন — নেটওয়ার্ক ফিরলে স্বয়ংক্রিয়ভাবে পাঠানো হবে।');
+          // Keep the optimistic row; it'll clear when queue replays and load() fires.
+        } catch {
+          // The offline queue write failed — the payment is NOT saved anywhere.
+          onRollback?.();
+          setError('অফলাইনে সংরক্ষণ ব্যর্থ হয়েছে — আবার চেষ্টা করুন।');
+        }
       } else {
         onRollback?.();
         setError(err.message);

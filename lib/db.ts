@@ -90,16 +90,16 @@ export interface QueuedMutation {
   ts: number;
 }
 
+// Rejects on failure so the caller can surface it — a dropped offline write
+// would otherwise be lost silently while the user is told it's queued.
 export async function pushMutation(m: Omit<QueuedMutation, 'id' | 'ts'>): Promise<void> {
-  try {
-    const db = await openDB();
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction(QUEUE_STORE, 'readwrite');
-      tx.objectStore(QUEUE_STORE).add({ ...m, ts: Date.now() });
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch {}
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    tx.objectStore(QUEUE_STORE).add({ ...m, ts: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('queue write failed'));
+  });
 }
 
 export async function listMutations(): Promise<QueuedMutation[]> {
@@ -115,14 +115,14 @@ export async function listMutations(): Promise<QueuedMutation[]> {
   }
 }
 
+// Rejects on failure. replayQueue deletes a row only after its POST succeeded,
+// so a silent failure here would let the same payment be sent again.
 export async function deleteMutation(id: number): Promise<void> {
-  try {
-    const db = await openDB();
-    await new Promise<void>((resolve) => {
-      const tx = db.transaction(QUEUE_STORE, 'readwrite');
-      tx.objectStore(QUEUE_STORE).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    });
-  } catch {}
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(QUEUE_STORE, 'readwrite');
+    tx.objectStore(QUEUE_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('queue delete failed'));
+  });
 }

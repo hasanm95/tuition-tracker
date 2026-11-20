@@ -36,8 +36,7 @@ function StudentsInner() {
   const ADVANCED_CLASSES = new Set(['৯ম', '১০ম', 'পরীক্ষার্থী']);
   const isAdvanced = ADVANCED_CLASSES.has(classFilter);
 
-  // search + filters
-  const [q, setQ] = useState('');
+  // filters (name/roll search lives on the dashboard)
   const [section, setSection] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -68,7 +67,6 @@ function StudentsInner() {
   }, [classStudents, isAdvanced]);
 
   const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase();
     return classStudents.filter((s) => {
       if (section !== 'all' && s.section !== section) return false;
       if (status === 'active' && s.status === 'অব্যাহতি প্রাপ্ত') return false;
@@ -77,10 +75,6 @@ function StudentsInner() {
         const sub = (s.subjects || '').trim() || 'সাধারণ গণিত';
         if (sub !== subjectFilter) return false;
       }
-      if (needle) {
-        const hay = `${s.name} ${s.roll}`.toLowerCase();
-        if (!hay.includes(needle)) return false;
-      }
       return true;
     }).sort((a, b) => {
       const ra = Number(a.roll) || 0;
@@ -88,7 +82,7 @@ function StudentsInner() {
       if (ra !== rb) return ra - rb;
       return (a.section || '').localeCompare(b.section || ''); // ক before খ on same roll
     });
-  }, [classStudents, q, section, status, subjectFilter]);
+  }, [classStudents, section, status, subjectFilter]);
 
   const notConnected = isSetupError(error);
 
@@ -125,13 +119,6 @@ function StudentsInner() {
       {tab === 'students' && !error && (
         <>
           <div className="filter-bar">
-            <input
-              className="search"
-              placeholder="🔍 নাম বা রোল দিয়ে খুঁজুন…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              style={{ margin: 0 }}
-            />
             <select value={section} onChange={(e) => setSection(e.target.value)}>
               <option value="all">সব শাখা</option>
               {sections.map((s) => <option key={s} value={s}>শাখা: {s}</option>)}
