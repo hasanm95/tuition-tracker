@@ -100,11 +100,11 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
             </table>
 
             <div className="vc-totals">
+              <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
+              <div className="vc-tot due"><span>বকেয়া</span><b>{money(Math.max(0, student.due))}</b></div>
               {lastDate && (
                 <div className="vc-tot last"><span>সর্বশেষ জমা ({formatDate(lastDate)})</span><b>{money(lastDeposit)}</b></div>
               )}
-              <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
-              <div className="vc-tot due"><span>বকেয়া</span><b>{money(Math.max(0, student.due))}</b></div>
             </div>
 
             <div className="vc-foot">
