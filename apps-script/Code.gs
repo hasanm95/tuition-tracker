@@ -33,8 +33,8 @@ var PAYMENT_KEYS          = ['id',       'studentId','paidOn', 'amount', 'entryT
 var EXAM_SHEET_HEADERS = ['MarkID','শিক্ষাবর্ষ','শ্রেণী','শাখা','StudentID','রোল','নাম','পরীক্ষার তারিখ','পরীক্ষার নাম','মোট নম্বর','প্রাপ্ত নম্বর'];
 var EXAM_KEYS          = ['id',    'academicYear', 'class',  'section', 'studentId', 'roll', 'name', 'examDate','examTitle',   'totalMarks','obtainedMarks'];
 
-var CLASS_FEE_SHEET_HEADERS = ['শিক্ষাবর্ষ','শ্রেণী','মাসের নাম','ধার্য বেতন'];
-var CLASS_FEE_KEYS          = ['academicYear', 'class', 'monthName', 'fee'];
+var CLASS_FEE_SHEET_HEADERS = ['শিক্ষাবর্ষ','শ্রেণী','মাসের নাম','ধার্য বেতন','বিষয়'];
+var CLASS_FEE_KEYS          = ['academicYear', 'class', 'monthName', 'fee', 'subject'];
 
 var CONFIG_HEADERS = ['Key', 'Value'];
 
@@ -127,19 +127,39 @@ function monthFeeMap(student, classFees) {
   var fee = Number(student.monthlyFee || 0);
   var yr = String(student.academicYear || (student.startDate ? String(student.startDate).slice(0, 4) : ''));
   var cls = String(student['class'] || '');
+  var subj = subjectOf_(student);
   var map = {};
   for (var mi = 0; mi < BN_MONTHS.length; mi++) {
     var mn = BN_MONTHS[mi];
-    var override = null;
-    for (var i = 0; i < classFees.length; i++) {
-      if (String(classFees[i].academicYear) === yr && String(classFees[i]['class']) === cls && String(classFees[i].monthName) === mn) {
-        override = Number(classFees[i].fee || 0);
-        break;
-      }
-    }
+    var override = classFeeOverride_(classFees, yr, cls, subj, mn);
     map[mn] = override !== null ? override : fee;
   }
   return map;
+}
+
+var HM_RE = /\s*\(HM\)\s*$/;
+function baseClass_(cls) { return String(cls || '').replace(HM_RE, '').trim(); }
+// A student's subject: the subjects field, else inferred from a legacy (HM) class.
+function subjectOf_(student) {
+  var s = String(student.subjects || '').trim();
+  if (s) return s;
+  return HM_RE.test(String(student['class'] || '')) ? 'উচ্চতর গণিত' : 'সাধারণ গণিত';
+}
+// Class/month fee override for this student's subject. Rows are matched on the
+// base class (so a legacy "x (HM)" row still matches); a row with an empty
+// subject is legacy and covers every subject, while an exact subject match wins.
+function classFeeOverride_(classFees, yr, cls, subj, mn) {
+  var base = baseClass_(cls);
+  var wildcard = null;
+  for (var i = 0; i < classFees.length; i++) {
+    var f = classFees[i];
+    if (String(f.academicYear) === yr && baseClass_(f['class']) === base && String(f.monthName) === mn) {
+      var fs = String(f.subject || '').trim();
+      if (fs === subj) return Number(f.fee || 0);
+      if (fs === '') wildcard = Number(f.fee || 0);
+    }
+  }
+  return wildcard;
 }
 
 function addStudent(data) {
@@ -391,17 +411,36 @@ function migrateScienceToHM() {
 
 function setClassMonthFee(data) {
   var sheet = tab('ClassFees', CLASS_FEE_SHEET_HEADERS);
+  if (sheet.getLastColumn() < 5) sheet.getRange(1, 5).setValue('বিষয়');
   var values = sheet.getDataRange().getValues();
   var yr = String(data.year || '').trim(), cls = String(data['class'] || '').trim();
   var mn = String(data.monthName || '').trim(), fee = Number(data.fee || 0);
+  var subj = String(data.subject || '').trim();
+  var label = cls + (subj ? ' (' + subj + ')' : '') + ' / ' + mn + ' = ৳' + fee;
   for (var r = 1; r < values.length; r++) {
-    if (String(values[r][0]).trim() === yr && String(values[r][1]).trim() === cls && String(values[r][2]).trim() === mn) {
+    if (String(values[r][0]).trim() === yr && String(values[r][1]).trim() === cls &&
+        String(values[r][2]).trim() === mn && String(values[r][4] || '').trim() === subj) {
       sheet.getRange(r + 1, 4).setValue(fee);
-      return cls + ' / ' + mn + ' = ৳' + fee;
+      return label;
     }
   }
-  sheet.appendRow([yr, cls, mn, fee]);
-  return cls + ' / ' + mn + ' = ৳' + fee;
+  sheet.appendRow([yr, cls, mn, fee, subj]);
+  return label;
+}
+
+// Self-check (run from the Apps Script editor): subject-specific wins, legacy
+// empty-subject row is a wildcard, (HM) class still matches its base-class row.
+function test_classFeeOverride_() {
+  var fees = [
+    { academicYear: '2026', 'class': 'পরীক্ষার্থী', monthName: 'জানুয়ারি', fee: 0,   subject: 'উচ্চতর গণিত' },
+    { academicYear: '2026', 'class': 'পরীক্ষার্থী', monthName: 'ফেব্রুয়ারি', fee: 150, subject: '' }
+  ];
+  function eq(a, b, m) { if (a !== b) throw 'FAIL ' + m + ': ' + a + ' !== ' + b; }
+  eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী', 'উচ্চতর গণিত', 'জানুয়ারি'), 0, 'HM holiday applies');
+  eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী', 'সাধারণ গণিত', 'জানুয়ারি'), null, 'GM untouched by HM holiday');
+  eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী (HM)', 'উচ্চতর গণিত', 'জানুয়ারি'), 0, 'legacy (HM) class matches base');
+  eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী', 'সাধারণ গণিত', 'ফেব্রুয়ারি'), 150, 'legacy empty subject is wildcard');
+  return 'ok';
 }
 
 // Normalize any date (Date object, yyyy-mm-dd, dd-mm-yyyy, with / or -) to
@@ -578,13 +617,7 @@ function withDue(student, totalPaid, classFees) {
     for (var m = 0; m < completedMonths; m++) {
       var mn = BN_MONTHS[(st.getMonth() + m) % 12];
       var yr = String(student.academicYear || (student.startDate ? student.startDate.slice(0, 4) : ''));
-      var override = null;
-      for (var i = 0; i < classFees.length; i++) {
-        if (classFees[i].academicYear === yr && classFees[i]['class'] === student['class'] && classFees[i].monthName === mn) {
-          override = Number(classFees[i].fee || 0);
-          break;
-        }
-      }
+      var override = classFeeOverride_(classFees, yr, student['class'], subjectOf_(student), mn);
       totalExpected += (override !== null ? override : fee);
     }
     calcDue = Math.max(0, totalExpected - totalPaid);

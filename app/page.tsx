@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { isSetupError } from '@/lib/errors';
 import { useYear } from './providers';
 import { HOTLINE } from '@/lib/config';
+import { baseClass, subjectOf } from '@/lib/format';
 import { useStudents } from '@/lib/useStudents';
 import ListSkeleton from '@/components/ListSkeleton';
 import BackendNotice from '@/components/BackendNotice';
@@ -16,23 +17,28 @@ export default function Dashboard() {
 
   const CLASS_ORDER = ['৬ষ্ঠ', '৭ম', '৮ম', '৯ম', '১০ম', 'পরীক্ষার্থী'];
 
+  // One card per (class, subject): a class with two subjects (e.g. পরীক্ষার্থী
+  // with সাধারণ + উচ্চতর গণিত) shows two labelled cards; single-subject classes stay one.
   const classes = useMemo(() => {
     if (!students) return [];
-    const map: Record<string, number> = {};
+    const groups: Record<string, { base: string; subject: string; count: number }> = {};
+    const subjectsByBase: Record<string, Set<string>> = {};
     for (const s of students) {
       if (s.status === 'অব্যাহতি প্রাপ্ত') continue;
-      const cls = (s.class || '—').replace(/ \(HM\)$/, '');
-      map[cls] = (map[cls] || 0) + 1;
+      const base = baseClass(s.class || '—') || '—';
+      const subject = subjectOf(s);
+      const key = base + '\u0000' + subject;
+      (groups[key] ||= { base, subject, count: 0 }).count++;
+      (subjectsByBase[base] ||= new Set()).add(subject);
     }
-    return Object.entries(map)
-      .map(([name, count]) => ({ name, count }))
+    return Object.values(groups)
+      .map((g) => ({ ...g, multi: subjectsByBase[g.base].size > 1 }))
       .sort((a, b) => {
-        const ia = CLASS_ORDER.indexOf(a.name);
-        const ib = CLASS_ORDER.indexOf(b.name);
-        if (ia === -1 && ib === -1) return a.name.localeCompare(b.name);
-        if (ia === -1) return 1;
-        if (ib === -1) return -1;
-        return ia - ib;
+        const oa = CLASS_ORDER.indexOf(a.base), ob = CLASS_ORDER.indexOf(b.base);
+        const ra = oa === -1 ? 99 : oa, rb = ob === -1 ? 99 : ob;
+        if (ra !== rb) return ra - rb;
+        if (a.base !== b.base) return a.base.localeCompare(b.base);
+        return a.subject.localeCompare(b.subject);
       });
   }, [students]);
 
@@ -105,11 +111,15 @@ export default function Dashboard() {
 
           {classes.length > 0 && (
             <div className="class-grid">
-              {classes.map(({ name, count }, i) => (
-                <Link key={name} href={`/students?class=${encodeURIComponent(name)}&year=${year}`}>
+              {classes.map(({ base, subject, count, multi }, i) => (
+                <Link
+                  key={base + subject}
+                  href={`/students?class=${encodeURIComponent(base)}&year=${year}${multi ? `&subject=${encodeURIComponent(subject)}` : ''}`}
+                >
                   <div className={`class-card accent-${i % 6}`}>
                     <div className="class-avatar">🎓</div>
-                    <div className="cn">{name}</div>
+                    <div className="cn">{base}</div>
+                    {multi && <div className="cs">{subject}</div>}
                     <div className="cc">{count} জন পড়ছে</div>
                   </div>
                 </Link>

@@ -46,6 +46,18 @@ export function todayLocal(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+const HM_RE = / \(HM\)$/;
+/** Class name without the legacy " (HM)" higher-math suffix. */
+export function baseClass(cls: string): string {
+  return (cls || '').replace(HM_RE, '').trim();
+}
+/** A student's subject: the subjects field, else inferred from a legacy (HM) class. */
+export function subjectOf(s: { class?: string; subjects?: string }): string {
+  const sub = (s.subjects || '').trim();
+  if (sub) return sub;
+  return HM_RE.test(s.class || '') ? 'উচ্চতর গণিত' : 'সাধারণ গণিত';
+}
+
 export function dueLabel(due: number): string {
   if (due > 0) return 'owed';
   if (due < 0) return 'in advance';

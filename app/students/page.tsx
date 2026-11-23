@@ -8,7 +8,7 @@ import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
 import { useStudents } from '@/lib/useStudents';
 import { BN_MONTHS, COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
-import { formatDate, todayLocal } from '@/lib/format';
+import { formatDate, todayLocal, subjectOf } from '@/lib/format';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
 import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
@@ -36,7 +36,7 @@ function StudentsInner() {
   // filters (name/roll search lives on the dashboard)
   const [section, setSection] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
-  const [subjectFilter, setSubjectFilter] = useState('');
+  const [subjectFilter, setSubjectFilter] = useState(searchParams.get('subject') ?? '');
 
   // modals
   const [feeModal, setFeeModal] = useState(false);
@@ -59,7 +59,7 @@ function StudentsInner() {
   // Subject tabs appear only when this class mixes more than one subject.
   const subjectTabs = useMemo(() => {
     const set = new Set<string>();
-    classStudents.forEach((s) => set.add((s.subjects || '').trim() || 'সাধারণ গণিত'));
+    classStudents.forEach((s) => set.add(subjectOf(s)));
     return Array.from(set).sort();
   }, [classStudents]);
 
@@ -68,10 +68,7 @@ function StudentsInner() {
       if (section !== 'all' && s.section !== section) return false;
       if (status === 'active' && s.status === 'অব্যাহতি প্রাপ্ত') return false;
       if (status === 'inactive' && s.status !== 'অব্যাহতি প্রাপ্ত') return false;
-      if (subjectFilter) {
-        const sub = (s.subjects || '').trim() || 'সাধারণ গণিত';
-        if (sub !== subjectFilter) return false;
-      }
+      if (subjectFilter && subjectOf(s) !== subjectFilter) return false;
       return true;
     }).sort((a, b) => {
       const ra = Number(a.roll) || 0;
@@ -163,7 +160,7 @@ function StudentsInner() {
                       {s.isFree && <span className="badge free" style={{ fontSize: 11 }}>বিনা বেতনে</span>}
                     </div>
                     <div className="meta">রোল: {s.roll} | শাখা: {s.section || '—'}</div>
-                  <div className="meta subjects-meta">{(s.subjects || '').trim() || 'সাধারণ গণিত'}</div>
+                  <div className="meta subjects-meta">{subjectOf(s)}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {s.due > 0 && <span className="badge due">বকেয়া {Math.round(s.due)}</span>}
@@ -194,7 +191,13 @@ function StudentsInner() {
       )}
 
       {feeModal && (
-        <FeeModal year={effYear} cls={classFilter} onClose={() => setFeeModal(false)} />
+        <FeeModal
+          year={effYear}
+          cls={classFilter}
+          subjects={subjectTabs}
+          current={subjectFilter || subjectTabs[0] || 'সাধারণ গণিত'}
+          onClose={() => setFeeModal(false)}
+        />
       )}
 
       {examModal && (
@@ -410,8 +413,9 @@ function ExamTab({ year, cls, onNew, onEdit, onReload, reload }: {
 }
 
 /* ── Fee-change modal ─────────────────────────────────────────── */
-function FeeModal({ year, cls, onClose }: { year: number; cls: string; onClose: () => void }) {
+function FeeModal({ year, cls, subjects, current, onClose }: { year: number; cls: string; subjects: string[]; current: string; onClose: () => void }) {
   const [month, setMonth] = useState(BN_MONTHS[new Date().getMonth()]);
+  const [subject, setSubject] = useState(current);
   const [holiday, setHoliday] = useState(false);
   const [fee, setFee] = useState('');
   const [busy, setBusy] = useState(false);
@@ -422,7 +426,7 @@ function FeeModal({ year, cls, onClose }: { year: number; cls: string; onClose: 
     try {
       const res = await fetch('/api/class-fee', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year, class: cls, monthName: month, fee: holiday ? 0 : Number(fee || 0) }),
+        body: JSON.stringify({ year, class: cls, subject, monthName: month, fee: holiday ? 0 : Number(fee || 0) }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'সংরক্ষণ ব্যর্থ');
       setMsg('✅ সংরক্ষিত হয়েছে!');
@@ -439,6 +443,16 @@ function FeeModal({ year, cls, onClose }: { year: number; cls: string; onClose: 
         </div>
         <div className="modal-body">
           <div className="hl" style={{ marginBottom: 10 }}>ক্লাস: <span className="accent">{cls} ({year} সাল)</span></div>
+          {subjects.length > 1 ? (
+            <>
+              <label>কোন বিষয়?</label>
+              <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+                {subjects.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </>
+          ) : (
+            <div className="hl" style={{ marginBottom: 10 }}>বিষয়: <span className="accent">{subject}</span></div>
+          )}
           <label>কোন মাসের বেতন পরিবর্তন?</label>
           <select value={month} onChange={(e) => setMonth(e.target.value)}>
             {BN_MONTHS.map((m) => <option key={m}>{m}</option>)}

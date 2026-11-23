@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
-import { todayLocal } from '@/lib/format';
+import { todayLocal, subjectOf, baseClass } from '@/lib/format';
 import { YEAR_OPTIONS as YEARS } from '@/lib/config';
 import BackendNotice from '@/components/BackendNotice';
 
@@ -41,6 +41,44 @@ export default function StudentForm({ student }: Props) {
   const [subject, setSubject] = useState(() => defaultSubject(student?.class ?? '', student?.subjects));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Suggest existing students (any year) while enrolling, so a returning
+  // student can be promoted by prefilling their last record and editing it.
+  const [known, setKnown] = useState<Student[]>([]);
+  const [sugOpen, setSugOpen] = useState(false);
+  useEffect(() => {
+    if (editing) return;
+    fetch('/api/students')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => { if (Array.isArray(d)) setKnown(d); })
+      .catch(() => {});
+  }, [editing]);
+
+  const suggestions = useMemo(() => {
+    const q = form.name.trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set<string>();
+    return known.filter((s) => {
+      if (!s.name?.toLowerCase().includes(q)) return false;
+      const k = `${s.name}|${s.class}|${s.academicYear}`;
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    }).slice(0, 6);
+  }, [known, form.name]);
+
+  function pick(s: Student) {
+    setForm((f) => ({
+      ...f,
+      name: s.name,
+      class: s.class ? baseClass(s.class) : f.class,
+      section: s.section ?? f.section,
+      roll: s.roll ?? f.roll,
+      phone: s.phone ?? f.phone,
+      monthlyFee: s.monthlyFee != null ? String(s.monthlyFee) : f.monthlyFee,
+    }));
+    setSubject(subjectOf(s));
+    setSugOpen(false);
+  }
 
   function set<K extends keyof typeof form>(key: K, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -93,13 +131,30 @@ export default function StudentForm({ student }: Props) {
       {/* Disable every field (not just the submit button) while the save is in flight. */}
       <fieldset disabled={saving} style={{ display: 'contents' }}>
       <label htmlFor="name">নাম *</label>
-      <input
-        id="name"
-        value={form.name}
-        onChange={(e) => set('name', e.target.value)}
-        placeholder="শিক্ষার্থীর পুরো নাম"
-        autoFocus
-      />
+      <div className="autocomplete">
+        <input
+          id="name"
+          value={form.name}
+          onChange={(e) => { set('name', e.target.value); setSugOpen(true); }}
+          onFocus={() => setSugOpen(true)}
+          onBlur={() => setTimeout(() => setSugOpen(false), 150)}
+          placeholder="শিক্ষার্থীর পুরো নাম"
+          autoComplete="off"
+          autoFocus
+        />
+        {!editing && sugOpen && suggestions.length > 0 && (
+          <ul className="autocomplete-list">
+            {suggestions.map((s) => (
+              <li key={s.id}>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pick(s)}>
+                  <span className="ac-name">{s.name}</span>
+                  <span className="ac-meta">{baseClass(s.class)} · {subjectOf(s)} · রোল {s.roll || '—'} · {s.academicYear}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="row-gap">
         <div>

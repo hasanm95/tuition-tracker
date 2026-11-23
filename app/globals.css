@@ -305,11 +305,11 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 .class-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
+  gap: 12px;
   margin-top: 4px;
 }
-@media (min-width: 900px) { .class-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 400px) { .class-grid { gap: 12px; } }
+@media (min-width: 900px) { .class-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 400px) { .class-grid { gap: 10px; } }
 
 .class-card {
   --ac: var(--brand);
@@ -320,7 +320,7 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 20px 16px 18px;
+  padding: 14px 12px 12px;
   text-align: center;
   cursor: pointer;
   overflow: hidden;
@@ -340,26 +340,33 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
 .class-card:active { transform: translateY(0); }
 
 .class-card .class-avatar {
-  width: 48px;
-  height: 48px;
-  margin: 6px auto 12px;
-  border-radius: 16px;
+  width: 36px;
+  height: 36px;
+  margin: 2px auto 8px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 17px;
   color: #fff;
   background: var(--ac);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--ac) 40%, transparent);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--ac) 40%, transparent);
 }
 
 .class-card .cn {
   font-family: var(--font-display);
-  font-size: 23px;
+  font-size: 18px;
   font-weight: 700;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   color: var(--text);
   line-height: 1.15;
+}
+
+.class-card .cs {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
 }
 
 .class-card .cc {
@@ -368,8 +375,8 @@ h1, h2, h3, .font-display { font-family: var(--font-display); }
   color: var(--ac);
   border: 1px solid color-mix(in srgb, var(--ac) 28%, transparent);
   border-radius: 999px;
-  padding: 5px 16px;
-  font-size: 13px;
+  padding: 4px 12px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -1320,3 +1327,36 @@ tr.row-pending { opacity: 0.55; }
   color: #fff;
   border-color: var(--brand);
 }
+
+/* ── Name autocomplete (enrol form) ────────────────────────────── */
+.autocomplete { position: relative; }
+.autocomplete-list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lift);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.autocomplete-list button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.autocomplete-list button:hover { background: var(--brand-soft); }
+.autocomplete-list .ac-name { font-weight: 600; color: var(--text); }
+.autocomplete-list .ac-meta { font-size: 12px; color: var(--muted); }
