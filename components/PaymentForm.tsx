@@ -77,6 +77,10 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
       setError('পরিমাণ ০-এর বেশি দিন।');
       return;
     }
+    if (isHoliday(monthName)) {
+      setError('এই মাস পড়ানো হয় নাই — বেতন জমা করা যাবে না।');
+      return;
+    }
     setSaving(true);
     onOptimistic?.({
       id: `pending-${Date.now()}`,

@@ -307,6 +307,14 @@ function addPayment(data) {
   var sheet = tab('Payments', PAYMENT_SHEET_HEADERS);
   var paidOn = String(data.paidOn || new Date().toISOString().slice(0, 10));
   var monthName = data.monthName || BN_MONTHS[new Date(paidOn).getMonth()] || '';
+  // Reject a payment for a month the class was not taught (fee override 0 while
+  // the student otherwise pays a fee); a "না পড়ানো" month must collect nothing.
+  var student = find(readTab('Students', STUDENT_SHEET_HEADERS, STUDENT_KEYS), data.studentId);
+  if (student && Number(student.monthlyFee || 0) > 0 && monthName) {
+    var yr = String(student.academicYear || (student.startDate ? String(student.startDate).slice(0, 4) : ''));
+    var override = classFeeOverride_(readTab('ClassFees', CLASS_FEE_SHEET_HEADERS, CLASS_FEE_KEYS), yr, student['class'], subjectOf_(student), monthName);
+    if (override === 0) throw 'এই মাস পড়ানো হয় নাই — বেতন জমা করা যাবে না।';
+  }
   var row = {
     id: 'PAY-' + Date.now(),
     studentId: String(data.studentId),
@@ -612,9 +620,11 @@ function withDue(student, totalPaid, classFees) {
   var calcDue = 0;
   if (!isFree) {
     var st = new Date(student.startDate), now = new Date();
-    var completedMonths = Math.max(0, (now.getFullYear() - st.getFullYear()) * 12 + (now.getMonth() - st.getMonth()));
+    var elapsedMonths = Math.max(0, (now.getFullYear() - st.getFullYear()) * 12 + (now.getMonth() - st.getMonth()));
     var totalExpected = 0;
-    for (var m = 0; m < completedMonths; m++) {
+    // Dues start at the beginning of each month, so count the current month too
+    // (m <= elapsedMonths); not-taught months stay free via their 0 override.
+    for (var m = 0; m <= elapsedMonths; m++) {
       var mn = BN_MONTHS[(st.getMonth() + m) % 12];
       var yr = String(student.academicYear || (student.startDate ? student.startDate.slice(0, 4) : ''));
       var override = classFeeOverride_(classFees, yr, student['class'], subjectOf_(student), mn);
