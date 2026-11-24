@@ -173,7 +173,7 @@ function addStudent(data) {
     roll: String(data.roll || '').trim(),
     startDate: startDate,
     monthlyFee: Number(data.monthlyFee || 0),
-    phone: String(data.phone || '').trim(),
+    phone: normPhone_(data.phone),
     status: String(data.status || 'সক্রিয়').trim(),
     dischargeDate: '',
     academicYear: String(data.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear()))),
@@ -181,13 +181,20 @@ function addStudent(data) {
   };
   if (!row.name) throw 'নাম আবশ্যক।';
   sheet.appendRow(STUDENT_KEYS.map(function(k) { return row[k]; }));
-  forceTextCells_(sheet, sheet.getLastRow(), ['startDate', 'academicYear'], row, STUDENT_KEYS);
+  forceTextCells_(sheet, sheet.getLastRow(), ['startDate', 'academicYear', 'phone'], row, STUDENT_KEYS);
   return withDue(row, 0, []);
 }
 
 // Re-write the given columns as literal text so Sheets does not coerce dates
 // (startDate) or 4-digit years (academicYear) into Date/number cells, which
 // otherwise break date lookups and strict string comparisons.
+// Normalize a phone: keep a leading + (international) and digits only, dropping
+// spaces, dashes and other separators. The leading 0 is a digit, so it stays.
+function normPhone_(p) {
+  p = String(p || '').trim();
+  return (p.charAt(0) === '+' ? '+' : '') + p.replace(/[^0-9]/g, '');
+}
+
 function forceTextCells_(sheet, rowNum, fields, obj, keys) {
   fields.forEach(function(f) {
     var col = keys.indexOf(f) + 1;
@@ -210,7 +217,7 @@ function updateStudent(data) {
         roll: data.roll != null ? String(data.roll).trim() : current.roll,
         startDate: startDate,
         monthlyFee: data.monthlyFee != null ? Number(data.monthlyFee) : Number(current.monthlyFee || 0),
-        phone: data.phone != null ? String(data.phone).trim() : current.phone,
+        phone: data.phone != null ? normPhone_(data.phone) : current.phone,
         status: data.status != null ? String(data.status).trim() : (current.status || 'সক্রিয়'),
         dischargeDate: current.dischargeDate || '',
         academicYear: data.academicYear != null
@@ -220,7 +227,7 @@ function updateStudent(data) {
       };
       sheet.getRange(r + 1, 1, 1, STUDENT_KEYS.length)
         .setValues([STUDENT_KEYS.map(function(k) { return updated[k]; })]);
-      forceTextCells_(sheet, r + 1, ['startDate', 'academicYear'], updated, STUDENT_KEYS);
+      forceTextCells_(sheet, r + 1, ['startDate', 'academicYear', 'phone'], updated, STUDENT_KEYS);
       return getStudent(updated.id);
     }
   }
@@ -448,6 +455,14 @@ function test_classFeeOverride_() {
   eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী', 'সাধারণ গণিত', 'জানুয়ারি'), null, 'GM untouched by HM holiday');
   eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী (HM)', 'উচ্চতর গণিত', 'জানুয়ারি'), 0, 'legacy (HM) class matches base');
   eq(classFeeOverride_(fees, '2026', 'পরীক্ষার্থী', 'সাধারণ গণিত', 'ফেব্রুয়ারি'), 150, 'legacy empty subject is wildcard');
+  return 'ok';
+}
+
+function test_normPhone_() {
+  function eq(a, b, m) { if (a !== b) throw 'FAIL ' + m + ': ' + a + ' !== ' + b; }
+  eq(normPhone_('01712-345 678'), '01712345678', 'keeps leading 0, strips separators');
+  eq(normPhone_('+880 1712 345678'), '+8801712345678', 'keeps leading +');
+  eq(normPhone_(null), '', 'empty stays empty');
   return 'ok';
 }
 
