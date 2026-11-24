@@ -36,7 +36,9 @@ function StudentsInner() {
   // filters (name/roll search lives on the dashboard)
   const [section, setSection] = useState<string>('all');
   const [status, setStatus] = useState<string>('all');
-  const [subjectFilter, setSubjectFilter] = useState(searchParams.get('subject') ?? '');
+  // Subject comes from the dashboard card (?subject=…); each subject is its own
+  // class there, so no in-page switcher is needed.
+  const [subjectFilter] = useState(searchParams.get('subject') ?? '');
 
   // modals
   const [feeModal, setFeeModal] = useState(false);
@@ -123,26 +125,6 @@ function StudentsInner() {
               <option value="inactive">অব্যাহতি প্রাপ্ত</option>
             </select>
           </div>
-
-          {subjectTabs.length > 1 && (
-            <div className="subject-tabs">
-              <button
-                className={`subject-tab${!subjectFilter ? ' active' : ''}`}
-                onClick={() => setSubjectFilter('')}
-              >
-                সব বিষয়
-              </button>
-              {subjectTabs.map((sub) => (
-                <button
-                  key={sub}
-                  className={`subject-tab${subjectFilter === sub ? ' active' : ''}`}
-                  onClick={() => setSubjectFilter(sub)}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          )}
 
           {all === null && <ListSkeleton />}
 

@@ -1309,40 +1309,6 @@ tr.row-pending { opacity: 0.55; }
   pointer-events: none;
 }
 
-/* ── Subject filter tabs ───────────────────────────────────────── */
-.subject-tabs {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px 0 12px;
-  scrollbar-width: none;
-}
-.subject-tabs::-webkit-scrollbar { display: none; }
-.subject-tab {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  box-sizing: border-box;
-  padding: 0 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  border: 1.5px solid color-mix(in srgb, var(--brand) 32%, transparent);
-  background: var(--card);
-  color: var(--brand-dark);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  line-height: 1;
-}
-.subject-tab.active {
-  background: var(--brand);
-  color: #fff;
-  border-color: var(--brand);
-}
-
 /* ── Name autocomplete (enrol form) ────────────────────────────── */
 .autocomplete { position: relative; }
 .autocomplete-list {
