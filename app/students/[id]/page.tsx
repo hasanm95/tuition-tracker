@@ -70,7 +70,7 @@ export default function StudentDetailPage() {
   }
 
   async function deletePayment(p: Payment) {
-    if (!confirm(`${p.paidOn} তারিখের ${money(p.amount)} পেমেন্ট মুছে ফেলবেন?`)) return;
+    if (!confirm(`${formatDate(p.paidOn)} তারিখের ${money(p.amount)} পেমেন্ট মুছে ফেলবেন?`)) return;
     setDeletingPayment(p.id);
     try {
       const res = await fetch(`/api/payments/${p.id}`, { method: 'DELETE' });

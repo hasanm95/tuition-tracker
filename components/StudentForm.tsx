@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Student } from '@/lib/types';
 import { isSetupError } from '@/lib/errors';
-import { todayLocal, subjectOf, baseClass } from '@/lib/format';
+import { todayLocal, toYmd, subjectOf, baseClass } from '@/lib/format';
 import { YEAR_OPTIONS as YEARS } from '@/lib/config';
 import BackendNotice from '@/components/BackendNotice';
 
@@ -32,7 +32,7 @@ export default function StudentForm({ student }: Props) {
     class: student?.class ?? '',
     section: student?.section ?? '',
     roll: student?.roll ?? '',
-    startDate: student?.startDate ?? todayLocal(),
+    startDate: toYmd(student?.startDate) || todayLocal(),
     monthlyFee: student?.monthlyFee != null ? String(student.monthlyFee) : '',
     phone: student?.phone ?? '',
     status: student?.status ?? 'সক্রিয়',

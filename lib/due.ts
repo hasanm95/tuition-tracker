@@ -4,6 +4,7 @@
 // fee 0 for a fee-paying student) is skipped; a payment counts against the month
 // it is FOR (monthName).
 import { BN_MONTHS } from '@/lib/config';
+import { toYmd } from '@/lib/format';
 import type { StudentDetail } from '@/lib/types';
 
 export interface MonthDue {
@@ -27,9 +28,11 @@ export function duePerMonth(student: StudentDetail): MonthDue[] {
 
   const now = new Date();
   const ay = Number(student.academicYear) || now.getFullYear();
-  const sd = student.startDate ? new Date(student.startDate) : null;
+  const ymd = toYmd(student.startDate);
+  const startYr = ymd ? Number(ymd.slice(0, 4)) : NaN;
+  const startMo = ymd ? Number(ymd.slice(5, 7)) - 1 : NaN;
   // Continuing students (joined a previous year) are owed from January.
-  const startIdx = sd && !isNaN(sd.getTime()) && sd.getFullYear() >= ay ? sd.getMonth() : 0;
+  const startIdx = !isNaN(startYr) && !isNaN(startMo) && startYr >= ay ? startMo : 0;
   // Only charge up to the current month for the running year; a past year is
   // full; a future year has not started, so nothing is owed yet.
   const endIdx = ay < now.getFullYear() ? 11 : ay > now.getFullYear() ? -1 : now.getMonth();

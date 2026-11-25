@@ -164,8 +164,17 @@ function classFeeOverride_(classFees, yr, cls, subj, mn) {
   return wildcard;
 }
 
+var TZ_CACHE_ = null;
+function tz_() {
+  if (!TZ_CACHE_) {
+    try { TZ_CACHE_ = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(); } catch (e) {}
+    if (!TZ_CACHE_) TZ_CACHE_ = Session.getScriptTimeZone();
+  }
+  return TZ_CACHE_;
+}
+
 function todayYmd_() {
-  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return Utilities.formatDate(new Date(), tz_(), 'yyyy-MM-dd');
 }
 
 function addStudent(data) {
@@ -329,7 +338,7 @@ function addPayment(data) {
   var amount = Number(data.amount || 0);
   if (!(amount > 0)) throw 'পরিমাণ ০-এর বেশি হতে হবে।';
   var sheet = tab('Payments', PAYMENT_SHEET_HEADERS);
-  var paidOn = String(data.paidOn || new Date().toISOString().slice(0, 10));
+  var paidOn = normDate(data.paidOn) || todayYmd_();
   var monthName = data.monthName || BN_MONTHS[new Date(paidOn).getMonth()] || '';
   // Reject a payment for a month the class was not taught (fee override 0 while
   // the student otherwise pays a fee); a "না পড়ানো" month must collect nothing.
@@ -523,21 +532,27 @@ function test_restorePhone_() {
   return 'ok';
 }
 
-// Normalize any date (Date object, yyyy-mm-dd, dd-mm-yyyy, with / or -) to
-// canonical 'yyyy-MM-dd' so matching works regardless of how it was stored.
+// Normalize any date (Date object, ISO timestamp, yyyy-mm-dd, dd-mm-yyyy) to
+// canonical 'yyyy-MM-dd' in the spreadsheet's timezone so Sheets Date cells
+// don't shift back 1 day via UTC JSON serialization.
 function pad2_(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
 function normDate(d) {
   if (d === null || d === undefined || d === '') return '';
   if (Object.prototype.toString.call(d) === '[object Date]') {
-    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return Utilities.formatDate(d, tz_(), 'yyyy-MM-dd');
   }
-  var s = String(d).trim().split('T')[0];
-  var parts = s.indexOf('/') >= 0 ? s.split('/') : s.split('-');
+  var s = String(d).trim();
+  if (s.indexOf('T') >= 0) {
+    var parsed = new Date(s);
+    if (!isNaN(parsed)) return Utilities.formatDate(parsed, tz_(), 'yyyy-MM-dd');
+  }
+  var datePart = s.split('T')[0];
+  var parts = datePart.indexOf('/') >= 0 ? datePart.split('/') : datePart.split('-');
   if (parts.length === 3) {
     if (parts[0].length === 4) return parts[0] + '-' + pad2_(parts[1]) + '-' + pad2_(parts[2]);
     if (parts[2].length === 4) return parts[2] + '-' + pad2_(parts[1]) + '-' + pad2_(parts[0]);
   }
-  return s;
+  return datePart;
 }
 
 function saveExamMarks(data) {
@@ -807,9 +822,13 @@ function readTab(name, sheetHeaders, keys) {
   return out;
 }
 
+var DATE_KEYS = { startDate: true, dischargeDate: true, paidOn: true, examDate: true };
 function rowToObj(row, keys) {
   var o = {};
-  keys.forEach(function(k, i) { o[k] = i < row.length ? row[i] : ''; });
+  keys.forEach(function(k, i) {
+    var v = i < row.length ? row[i] : '';
+    o[k] = DATE_KEYS[k] ? normDate(v) : v;
+  });
   return o;
 }
 
