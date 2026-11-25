@@ -164,9 +164,14 @@ function classFeeOverride_(classFees, yr, cls, subj, mn) {
   return wildcard;
 }
 
+function todayYmd_() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
 function addStudent(data) {
   var sheet = tab('Students', STUDENT_SHEET_HEADERS);
   var startDate = String(data.startDate || '').trim();
+  var status = String(data.status || 'সক্রিয়').trim();
   var row = {
     id: 'STU-' + Date.now(),
     name: String(data.name || '').trim(),
@@ -176,8 +181,8 @@ function addStudent(data) {
     startDate: startDate,
     monthlyFee: Number(data.monthlyFee || 0),
     phone: normPhone_(data.phone),
-    status: String(data.status || 'সক্রিয়').trim(),
-    dischargeDate: '',
+    status: status,
+    dischargeDate: status === 'অব্যাহতি প্রাপ্ত' ? todayYmd_() : '',
     academicYear: String(data.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear()))),
     subjects: String(data.subjects || '').trim()
   };
@@ -229,7 +234,9 @@ function updateStudent(data) {
         monthlyFee: data.monthlyFee != null ? Number(data.monthlyFee) : Number(current.monthlyFee || 0),
         phone: data.phone != null ? normPhone_(data.phone) : current.phone,
         status: data.status != null ? String(data.status).trim() : (current.status || 'সক্রিয়'),
-        dischargeDate: current.dischargeDate || '',
+        dischargeDate: (data.status != null ? String(data.status).trim() : (current.status || 'সক্রিয়')) === 'অব্যাহতি প্রাপ্ত'
+          ? (current.dischargeDate || todayYmd_())
+          : '',
         academicYear: data.academicYear != null
           ? String(data.academicYear)
           : (current.academicYear || (startDate ? startDate.slice(0, 4) : String(new Date().getFullYear()))),
@@ -273,7 +280,7 @@ function toggleStatus(id, status) {
     if (String(values[r][0]).trim() === String(id).trim()) {
       sheet.getRange(r + 1, STUDENT_KEYS.indexOf('status') + 1).setValue(status);
       var dischargeCol = STUDENT_KEYS.indexOf('dischargeDate') + 1;
-      sheet.getRange(r + 1, dischargeCol).setValue(status === 'অব্যাহতি প্রাপ্ত' ? new Date().toISOString().split('T')[0] : '');
+      sheet.getRange(r + 1, dischargeCol).setValue(status === 'অব্যাহতি প্রাপ্ত' ? todayYmd_() : '');
       return getStudent(id);
     }
   }
@@ -606,11 +613,42 @@ function getExamResults(data) {
 
 // ---- MONTHLY REPORT -------------------------------------------------------
 
-// Income statement for one academic year, month by month. Two rules the old
-// version broke: (1) a payment counts in the month it is FOR (monthName), not
-// the month it was handed over (paidOn); (2) a not-taught month (class/month
-// fee override 0) expects nothing. Discharged students still owe for the
-// months they attended, so they are included up to their discharge month.
+// Month range [start, end] a student counts in for `year`, or null if none.
+// Discharged students stop before their discharge month (or are skipped if no date).
+function studentReportRange_(s, year, yearCap) {
+  if (yearCap < 0) return null;
+  var sd = s.startDate ? new Date(s.startDate) : null;
+  // Continuing students (joined a previous year) are counted from January.
+  var startMonth = (sd && !isNaN(sd))
+    ? (sd.getFullYear() > year ? 12 : (sd.getFullYear() === year ? sd.getMonth() : 0))
+    : 0;
+  var endMonth = yearCap;
+  if (s.status === 'অব্যাহতি প্রাপ্ত') {
+    if (!s.dischargeDate) return null;
+    var dd = new Date(s.dischargeDate);
+    if (isNaN(dd) || dd.getFullYear() < year) return null;
+    if (dd.getFullYear() === year) endMonth = Math.min(endMonth, dd.getMonth() - 1);
+  }
+  return startMonth <= endMonth ? { start: startMonth, end: endMonth } : null;
+}
+
+function test_studentReportRange_() {
+  function eq(a, b, m) {
+    var sa = JSON.stringify(a), sb = JSON.stringify(b);
+    if (sa !== sb) throw 'FAIL ' + m + ': ' + sa + ' !== ' + sb;
+  }
+  eq(studentReportRange_({ status: 'সক্রিয়', startDate: '2026-03-10' }, 2026, 10), { start: 2, end: 10 }, 'active mid-year');
+  eq(studentReportRange_({ status: 'সক্রিয়', startDate: '2025-02-01' }, 2026, 10), { start: 0, end: 10 }, 'continuing student');
+  eq(studentReportRange_({ status: 'অব্যাহতি প্রাপ্ত', startDate: '2026-01-05', dischargeDate: '' }, 2026, 10), null, 'discharged without date excluded');
+  eq(studentReportRange_({ status: 'অব্যাহতি প্রাপ্ত', startDate: '2026-01-05', dischargeDate: '2026-11-25' }, 2026, 10), { start: 0, end: 9 }, 'discharged in Nov excluded from Nov');
+  eq(studentReportRange_({ status: 'অব্যাহতি প্রাপ্ত', startDate: '2026-01-05', dischargeDate: '2026-01-15' }, 2026, 10), null, 'discharged in start month excluded');
+  return 'ok';
+}
+
+// Income statement for one academic year, month by month:
+// (1) a payment counts in the month it is FOR (monthName), not paidOn;
+// (2) a not-taught month (class/month fee override 0) skips studentCount & expectedAmount;
+// (3) discharged students do not count from their discharge month onward.
 function getMonthlyReport(yr) {
   var year = parseInt(yr) || new Date().getFullYear();
   var yStr = String(year);
@@ -637,21 +675,13 @@ function getMonthlyReport(yr) {
 
   // Expected per month + how many studied that month.
   yearStudents.forEach(function(s) {
+    var range = studentReportRange_(s, year, yearCap);
+    if (!range) return;
     var fee = Number(s.monthlyFee || 0);
-    var sd = s.startDate ? new Date(s.startDate) : null;
-    // Continuing students (joined a previous year) are counted from January.
-    var startMonth = (sd && !isNaN(sd) && sd.getFullYear() >= year) ? sd.getMonth() : 0;
-    var endMonth = yearCap;
-    if (s.status === 'অব্যাহতি প্রাপ্ত' && s.dischargeDate) {
-      var dd = new Date(s.dischargeDate);
-      if (!isNaN(dd)) {
-        if (dd.getFullYear() < year) return;           // left before this year
-        if (dd.getFullYear() === year && dd.getMonth() < endMonth) endMonth = dd.getMonth();
-      }
-    }
-    for (var m = startMonth; m <= endMonth; m++) {
+    for (var m = range.start; m <= range.end; m++) {
       var mn = BN_MONTHS[m];
       var override = classFeeOverride_(classFees, yStr, s['class'], subjectOf_(s), mn);
+      if (override === 0) continue; // not-taught month: exclude student from this month
       stats[m].studentCount++;
       stats[m].expectedAmount += (override !== null ? override : fee);
     }
@@ -661,7 +691,7 @@ function getMonthlyReport(yr) {
   // back to the payment date's month for legacy rows with no monthName.
   payments.forEach(function(p) {
     if (!ids[String(p.studentId)]) return;
-    var mi = monthIdx[p.monthName];
+    var mi = monthIdx[String(p.monthName || '').trim()];
     if (mi === undefined) {
       var d = new Date(p.paidOn);
       if (isNaN(d) || d.getFullYear() !== year) return;

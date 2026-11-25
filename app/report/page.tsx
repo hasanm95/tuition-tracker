@@ -45,15 +45,15 @@ export default function ReportPage() {
         <>
           <div className="stat-cards">
             <div className="stat-card green">
-              <div className="sc-k">বাৎসরিক মোট আদায়কৃত আয়</div>
+              <div className="sc-k">বাৎসরিক মোট আদায়কৃত বেতন</div>
               <div className="sc-v">{money(report.totalCollected)}</div>
             </div>
             <div className="stat-card blue">
-              <div className="sc-k">বাৎসরিক লক্ষ্য</div>
+              <div className="sc-k">বাৎসরিক নির্ধারিত মোট বেতন</div>
               <div className="sc-v">{money(report.totalExpected)}</div>
             </div>
             <div className="stat-card red">
-              <div className="sc-k">বাৎসরিক বকেয়া</div>
+              <div className="sc-k">বাৎসরিক বকেয়া বেতন</div>
               <div className="sc-v">{money(report.totalDue)}</div>
             </div>
           </div>
@@ -63,10 +63,10 @@ export default function ReportPage() {
               <thead>
                 <tr>
                   <th>মাস</th>
-                  <th className="num">ছাত্র</th>
-                  <th className="num">আদায়কৃত আয়</th>
-                  <th className="num">লক্ষ্যমাত্রা</th>
-                  <th className="num">বকেয়া</th>
+                  <th className="num">শিক্ষার্থী সংখ্যা</th>
+                  <th className="num">নির্ধারিত মোট বেতন</th>
+                  <th className="num">আদায়কৃত বেতন</th>
+                  <th className="num">বকেয়া বেতন</th>
                   <th className="center">অবস্থা</th>
                 </tr>
               </thead>
@@ -75,8 +75,8 @@ export default function ReportPage() {
                   <tr key={m.monthName}>
                     <td>{m.monthName}</td>
                     <td className="num">{m.studentCount} জন</td>
-                    <td className="num">{money(m.collectedAmount)}</td>
                     <td className="num">{money(m.expectedAmount)}</td>
+                    <td className="num">{money(m.collectedAmount)}</td>
                     <td className="num">{money(m.dueAmount)}</td>
                     <td className="center">
                       {m.dueAmount > 0

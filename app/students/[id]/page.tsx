@@ -11,7 +11,7 @@ import { invalidateStudents } from '@/lib/useStudents';
 import { onQueueReplayed } from '@/lib/events';
 import PaymentForm from '@/components/PaymentForm';
 import BackendNotice from '@/components/BackendNotice';
-import VoucherModal from '@/components/VoucherModal';
+import VoucherModal, { type VoucherKind } from '@/components/VoucherModal';
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +20,7 @@ export default function StudentDetailPage() {
   const [deletingPayment, setDeletingPayment] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [voucher, setVoucher] = useState(false);
+  const [voucher, setVoucher] = useState<VoucherKind | null>(null);
   const [pendingPayments, setPendingPayments] = useState<Payment[]>([]);
 
   const refresh = useCallback(async () => {
@@ -114,7 +114,8 @@ export default function StudentDetailPage() {
         <>
           <div className="detail-actions">
             {refreshing && <span className="refresh-dot" title="আপডেট হচ্ছে…" />}
-            <button className="pill-btn brand" onClick={() => setVoucher(true)}>📄 ভাউচার (JPG/PDF)</button>
+            <button className="pill-btn green" onClick={() => setVoucher('deposit')}>🧾 জমা ভাউচার</button>
+            <button className="pill-btn brand" onClick={() => setVoucher('due')}>📄 বকেয়া ভাউচার</button>
             <Link href={`/students/${id}/edit`} className="pill-btn amber">✏️ এডিট</Link>
             <button className="pill-btn gray" onClick={toggleStatus} disabled={busy}>
               {discharged ? '↩ পুনরায় সক্রিয়' : 'অব্যাহতি'}
@@ -205,7 +206,7 @@ export default function StudentDetailPage() {
             </table>
           </div>
 
-          {voucher && <VoucherModal student={student} onClose={() => setVoucher(false)} />}
+          {voucher && <VoucherModal student={student} initialTab={voucher} onClose={() => setVoucher(null)} />}
         </>
       )}
     </>

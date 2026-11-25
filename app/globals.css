@@ -1138,6 +1138,8 @@ table.data td.center, table.data th.center { text-align: center; }
 .voucher .vc-title { font-family: var(--font-display); font-size: 25px; font-weight: 800; color: #2563eb; }
 .voucher .vc-sub { font-size: 15px; color: #64748b; margin-top: 2px; }
 .voucher .vc-receipt { display: inline-block; margin-top: 8px; background: #2563eb; color: #fff; font-weight: 700; font-size: 14px; padding: 4px 16px; border-radius: 999px; }
+.voucher .vc-receipt.ok { background: #16a34a; }
+.voucher .vc-receipt.due { background: #dc2626; }
 .voucher .vc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; font-size: 16px; margin-bottom: 14px; }
 .voucher .vc-info > div { display: flex; align-items: baseline; gap: 6px; }
 .voucher .vc-info span { color: #64748b; white-space: nowrap; }

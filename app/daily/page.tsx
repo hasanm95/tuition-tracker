@@ -202,7 +202,7 @@ export default function DailyPage() {
         </>
       )}
 
-      {voucherStudent && <VoucherModal student={voucherStudent} onClose={() => setVoucherStudent(null)} />}
+      {voucherStudent && <VoucherModal student={voucherStudent} initialTab="deposit" onClose={() => setVoucherStudent(null)} />}
     </>
   );
 }
