@@ -197,6 +197,14 @@ function normPhone_(p) {
   return (p.charAt(0) === '+' ? '+' : '') + p.replace(/[^0-9]/g, '');
 }
 
+// A phone stored as a number in a legacy row (before phone cells were forced to
+// text) loses its leading 0, so an 11-digit BD mobile reads back as 10 digits.
+// Restore the 0 on read (e.g. 1716630414 -> 01716630414).
+function restorePhone_(p) {
+  p = String(p == null ? '' : p).trim();
+  return /^1\d{9}$/.test(p) ? '0' + p : p;
+}
+
 function forceTextCells_(sheet, rowNum, fields, obj, keys) {
   fields.forEach(function(f) {
     var col = keys.indexOf(f) + 1;
@@ -498,6 +506,16 @@ function test_normPhone_() {
   return 'ok';
 }
 
+function test_restorePhone_() {
+  function eq(a, b, m) { if (a !== b) throw 'FAIL ' + m + ': ' + a + ' !== ' + b; }
+  eq(restorePhone_(1716630414), '01716630414', 'number restores leading 0');
+  eq(restorePhone_('1716630414'), '01716630414', 'string restores leading 0');
+  eq(restorePhone_('01716630414'), '01716630414', 'already-correct stays');
+  eq(restorePhone_('+8801716630414'), '+8801716630414', 'international untouched');
+  eq(restorePhone_(''), '', 'empty stays empty');
+  return 'ok';
+}
+
 // Normalize any date (Date object, yyyy-mm-dd, dd-mm-yyyy, with / or -) to
 // canonical 'yyyy-MM-dd' so matching works regardless of how it was stored.
 function pad2_(n) { n = String(n); return n.length < 2 ? '0' + n : n; }
@@ -725,6 +743,7 @@ function withDue(student, totalPaid, classFees) {
   }
   var out = {};
   STUDENT_KEYS.forEach(function(k) { out[k] = student[k]; });
+  out.phone = restorePhone_(out.phone);
   out.monthlyFee = fee;
   out.isFree = isFree;
   out.totalPaid = totalPaid;
