@@ -27,8 +27,10 @@ var BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ার�
 var STUDENT_SHEET_HEADERS = ['StudentID','নাম','শ্রেণী','শাখা','রোল','শুরুর তারিখ','মাসিক ফি','অভিভাবকের নাম্বার','স্ট্যাটাস','অব্যাহতির তারিখ','শিক্ষাবর্ষ','বিষয়সমূহ'];
 var STUDENT_KEYS          = ['id',       'name','class', 'section','roll','startDate',  'monthlyFee','phone',  'status',  'dischargeDate','academicYear','subjects'];
 
-var PAYMENT_SHEET_HEADERS = ['PaymentID','StudentID','টাকা জমার তারিখ','টাকার পরিমাণ','এন্ট্রির সময়','মাসের নাম','মাসিক বেতন'];
-var PAYMENT_KEYS          = ['id',       'studentId','paidOn', 'amount', 'entryTime',   'monthName', 'targetFee'];
+// 'শিক্ষার্থীর নাম' is appended last so existing rows (7 columns) stay aligned;
+// migratePaymentNames() adds the header and backfills names for old rows.
+var PAYMENT_SHEET_HEADERS = ['PaymentID','StudentID','টাকা জমার তারিখ','টাকার পরিমাণ','এন্ট্রির সময়','মাসের নাম','মাসিক বেতন','শিক্ষার্থীর নাম'];
+var PAYMENT_KEYS          = ['id',       'studentId','paidOn', 'amount', 'entryTime',   'monthName', 'targetFee','studentName'];
 
 var EXAM_SHEET_HEADERS = ['MarkID','শিক্ষাবর্ষ','শ্রেণী','শাখা','StudentID','রোল','নাম','পরীক্ষার তারিখ','পরীক্ষার নাম','মোট নম্বর','প্রাপ্ত নম্বর'];
 var EXAM_KEYS          = ['id',    'academicYear', 'class',  'section', 'studentId', 'roll', 'name', 'examDate','examTitle',   'totalMarks','obtainedMarks'];
@@ -329,7 +331,8 @@ function addPayment(data) {
     amount: amount,
     entryTime: new Date().toISOString(),
     monthName: monthName,
-    targetFee: Number(data.targetFee || amount)
+    targetFee: Number(data.targetFee || amount),
+    studentName: student ? String(student.name || '') : ''
   };
   sheet.appendRow(PAYMENT_KEYS.map(function(k) { return row[k]; }));
   // Keep paidOn as literal text (yyyy-mm-dd) so Sheets does not coerce it into a
@@ -347,6 +350,8 @@ function updatePayment(data) {
     if (String(values[r][0]) === String(data.id)) {
       var current = rowToObj(values[r], PAYMENT_KEYS);
       var paidOn = data.paidOn != null ? String(data.paidOn) : String(current.paidOn);
+      var name = current.studentName;
+      if (!name) { var s = find(readTab('Students', STUDENT_SHEET_HEADERS, STUDENT_KEYS), current.studentId); name = s ? String(s.name || '') : ''; }
       var updated = {
         id: current.id,
         studentId: current.studentId,
@@ -354,7 +359,8 @@ function updatePayment(data) {
         amount: data.amount != null ? Number(data.amount) : Number(current.amount),
         entryTime: current.entryTime || '',
         monthName: data.monthName != null ? String(data.monthName) : String(current.monthName || ''),
-        targetFee: data.targetFee != null ? Number(data.targetFee) : Number(current.targetFee || 0)
+        targetFee: data.targetFee != null ? Number(data.targetFee) : Number(current.targetFee || 0),
+        studentName: name
       };
       sheet.getRange(r + 1, 1, 1, PAYMENT_KEYS.length)
         .setValues([PAYMENT_KEYS.map(function(k) { return updated[k]; })]);
@@ -422,6 +428,32 @@ function migrateScienceToHM() {
     if (dirty) rng.setValues(vals);
   });
   return 'Updated ' + changed + ' rows to (HM).';
+}
+
+// One-time migration: add the 'শিক্ষার্থীর নাম' header to the Payments sheet and
+// fill in the name for every existing row from its StudentID. RUN THIS ONCE from
+// the Apps Script editor (pick migratePaymentNames → Run) after deploying the
+// new code. Safe to re-run — rows that already have a name are left untouched.
+function migratePaymentNames() {
+  var sheet = tab('Payments', PAYMENT_SHEET_HEADERS);
+  var nameCol = PAYMENT_KEYS.indexOf('studentName') + 1; // 8
+  sheet.getRange(1, nameCol).setValue(PAYMENT_SHEET_HEADERS[nameCol - 1]);
+  var students = readTab('Students', STUDENT_SHEET_HEADERS, STUDENT_KEYS);
+  var nameById = {};
+  students.forEach(function(s) { nameById[String(s.id)] = String(s.name || ''); });
+  var last = sheet.getLastRow();
+  if (last < 2) return 'No payment rows.';
+  var ids = sheet.getRange(2, PAYMENT_KEYS.indexOf('studentId') + 1, last - 1, 1).getValues();
+  var names = sheet.getRange(2, nameCol, last - 1, 1).getValues();
+  var filled = 0;
+  for (var i = 0; i < names.length; i++) {
+    if (String(names[i][0] || '').trim() === '') {
+      names[i][0] = nameById[String(ids[i][0]).trim()] || '';
+      if (names[i][0]) filled++;
+    }
+  }
+  sheet.getRange(2, nameCol, names.length, 1).setValues(names);
+  return 'Filled ' + filled + ' payment name(s).';
 }
 
 function setClassMonthFee(data) {
@@ -556,26 +588,65 @@ function getExamResults(data) {
 
 // ---- MONTHLY REPORT -------------------------------------------------------
 
+// Income statement for one academic year, month by month. Two rules the old
+// version broke: (1) a payment counts in the month it is FOR (monthName), not
+// the month it was handed over (paidOn); (2) a not-taught month (class/month
+// fee override 0) expects nothing. Discharged students still owe for the
+// months they attended, so they are included up to their discharge month.
 function getMonthlyReport(yr) {
   var year = parseInt(yr) || new Date().getFullYear();
+  var yStr = String(year);
   var students = readTab('Students', STUDENT_SHEET_HEADERS, STUDENT_KEYS);
   var payments = readTab('Payments', PAYMENT_SHEET_HEADERS, PAYMENT_KEYS);
+  var classFees = readTab('ClassFees', CLASS_FEE_SHEET_HEADERS, CLASS_FEE_KEYS);
+
+  var monthIdx = {};
+  BN_MONTHS.forEach(function(m, i) { monthIdx[m] = i; });
   var stats = BN_MONTHS.map(function(m) { return { monthName: m, studentCount: 0, expectedAmount: 0, collectedAmount: 0, dueAmount: 0 }; });
-  students.forEach(function(s) {
-    var sYr = s.academicYear || (s.startDate ? s.startDate.slice(0, 4) : '');
-    if (sYr !== String(year) || s.status === 'অব্যাহতি প্রাপ্ত') return;
-    var st = new Date(s.startDate), fee = Number(s.monthlyFee || 0);
-    for (var m = 0; m < 12; m++) {
-      if (st <= new Date(year, m + 1, 0, 23, 59, 59)) {
-        stats[m].studentCount++;
-        stats[m].expectedAmount += fee;
+
+  // Students of this academic year; map for attributing their payments.
+  var ids = {};
+  var yearStudents = students.filter(function(s) {
+    var sYr = s.academicYear || (s.startDate ? String(s.startDate).slice(0, 4) : '');
+    return String(sYr) === yStr;
+  });
+  yearStudents.forEach(function(s) { ids[String(s.id)] = true; });
+
+  // Expected per month + how many studied that month.
+  yearStudents.forEach(function(s) {
+    var fee = Number(s.monthlyFee || 0);
+    var sd = s.startDate ? new Date(s.startDate) : null;
+    // Continuing students (joined a previous year) are counted from January.
+    var startMonth = (sd && !isNaN(sd) && sd.getFullYear() >= year) ? sd.getMonth() : 0;
+    var endMonth = 11;
+    if (s.status === 'অব্যাহতি প্রাপ্ত' && s.dischargeDate) {
+      var dd = new Date(s.dischargeDate);
+      if (!isNaN(dd)) {
+        if (dd.getFullYear() < year) return;           // left before this year
+        if (dd.getFullYear() === year) endMonth = dd.getMonth();
       }
     }
+    for (var m = startMonth; m <= endMonth; m++) {
+      var mn = BN_MONTHS[m];
+      var override = classFeeOverride_(classFees, yStr, s['class'], subjectOf_(s), mn);
+      stats[m].studentCount++;
+      stats[m].expectedAmount += (override !== null ? override : fee);
+    }
   });
+
+  // Collected per month, by the month the payment is FOR (monthName), falling
+  // back to the payment date's month for legacy rows with no monthName.
   payments.forEach(function(p) {
-    var d = new Date(p.paidOn);
-    if (d.getFullYear() === year) stats[d.getMonth()].collectedAmount += Number(p.amount || 0);
+    if (!ids[String(p.studentId)]) return;
+    var mi = monthIdx[p.monthName];
+    if (mi === undefined) {
+      var d = new Date(p.paidOn);
+      if (isNaN(d) || d.getFullYear() !== year) return;
+      mi = d.getMonth();
+    }
+    stats[mi].collectedAmount += Number(p.amount || 0);
   });
+
   var totExp = 0, totCol = 0;
   stats.forEach(function(m) { m.dueAmount = Math.max(0, m.expectedAmount - m.collectedAmount); totExp += m.expectedAmount; totCol += m.collectedAmount; });
   return { year: year, monthlyStats: stats, totalExpected: totExp, totalCollected: totCol, totalDue: Math.max(0, totExp - totCol) };

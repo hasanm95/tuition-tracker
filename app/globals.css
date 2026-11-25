@@ -1103,6 +1103,7 @@ table.data td.center, table.data th.center { text-align: center; }
 }
 .modal-head.brand { background: var(--brand); }
 .modal-head.amber { background: #f59e0b; }
+.modal-head.red { background: #dc2626; }
 .modal-close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; line-height: 1; }
 .modal-body { padding: 20px; }
 .modal-foot { padding: 0 20px 20px; }

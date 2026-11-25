@@ -8,7 +8,7 @@ import { isSetupError } from '@/lib/errors';
 import { useYear } from '@/app/providers';
 import { useStudents } from '@/lib/useStudents';
 import { BN_MONTHS, COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
-import { formatDate, todayLocal, subjectOf } from '@/lib/format';
+import { formatDate, todayLocal, subjectOf, money } from '@/lib/format';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
 import { useSignature } from '@/lib/useSignature';
 import ListSkeleton from '@/components/ListSkeleton';
@@ -42,6 +42,7 @@ function StudentsInner() {
 
   // modals
   const [feeModal, setFeeModal] = useState(false);
+  const [dueModal, setDueModal] = useState(false);
   const [examModal, setExamModal] = useState(false);
   const [examEdit, setExamEdit] = useState<ExamInitial | null>(null);
   const [examReload, setExamReload] = useState(0);
@@ -92,6 +93,9 @@ function StudentsInner() {
         <h1>{classFilter || 'শিক্ষার্থী'} <span className="accent">({effYear} সাল)</span></h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {refreshing && <span className="refresh-dot" title="আপডেট হচ্ছে…" />}
+          <button className="pill-btn red" onClick={() => setDueModal(true)}>
+            📄 বকেয়া তালিকা (PDF/JPG)
+          </button>
           <button className="pill-btn amber" onClick={() => setFeeModal(true)}>
             🗓 নির্দিষ্ট মাসের বেতন পরিবর্তন / ছুটি
           </button>
@@ -179,6 +183,15 @@ function StudentsInner() {
           subjects={subjectTabs}
           current={subjectFilter || subjectTabs[0] || 'সাধারণ গণিত'}
           onClose={() => setFeeModal(false)}
+        />
+      )}
+
+      {dueModal && (
+        <DueListModal
+          year={effYear}
+          cls={classFilter || 'সকল শ্রেণী'}
+          students={shown}
+          onClose={() => setDueModal(false)}
         />
       )}
 
@@ -533,6 +546,115 @@ function ExamModal({ year, cls, students, initial, onClose }: { year: number; cl
         </div>
         <div className="modal-foot">
           <button className="btn" onClick={save} disabled={busy}>{busy ? 'সংরক্ষণ হচ্ছে…' : 'ফলাফল সংরক্ষণ করুন'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Class-wise due list (who owes how much → PDF/JPG) ────────── */
+function DueListModal({ year, cls, students, onClose }: { year: number; cls: string; students: Student[]; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const signature = useSignature();
+
+  const owed = students.filter((s) => s.due > 0).sort((a, b) => b.due - a.due);
+  const total = owed.reduce((sum, s) => sum + s.due, 0);
+  const safeFile = `বকেয়া-তালিকা-${cls.replace(/[\\/:*?"<>|]/g, '').slice(0, 30)}`;
+
+  async function downloadJPG() {
+    setBusy('jpg');
+    try {
+      const canvas = await captureSheet(ref.current!);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/jpeg', 0.95);
+      a.download = `${safeFile}.jpg`;
+      a.click();
+    } catch (e: any) { alert('ছবি তৈরি ব্যর্থ: ' + e.message); } finally { setBusy(null); }
+  }
+
+  async function downloadPDF() {
+    setBusy('pdf');
+    try {
+      const canvas = await captureSheet(ref.current!);
+      await sheetToPdf(canvas, `${safeFile}.pdf`);
+    } catch (e: any) { alert('PDF তৈরি ব্যর্থ: ' + e.message); } finally { setBusy(null); }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head red">
+          বকেয়া তালিকা — {cls}
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <div ref={ref} className="print-sheet framed">
+            <div className="es-head">
+              <div className="es-title">{COACHING_NAME}</div>
+              <div className="es-sub">{TAGLINE} | মোবাইল: {HOTLINE}</div>
+              <div className="es-meta">
+                <span className="es-badge">বকেয়া তালিকা</span>
+                <span>শ্রেণী: {cls}</span>
+                <span>{year} সাল</span>
+              </div>
+            </div>
+
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th className="center">#</th>
+                    <th>নাম</th>
+                    <th className="center">শাখা</th>
+                    <th className="num">রোল</th>
+                    <th className="num">বকেয়া (৳)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {owed.map((s, i) => (
+                    <tr key={s.id}>
+                      <td className="center">{i + 1}</td>
+                      <td>{s.name}</td>
+                      <td className="center">{s.section || '—'}</td>
+                      <td className="num">{s.roll || '—'}</td>
+                      <td className="num">{money(s.due)}</td>
+                    </tr>
+                  ))}
+                  {owed.length === 0 && (
+                    <tr><td colSpan={5} className="center" style={{ color: '#16a34a' }}>কারো বকেয়া নেই ✅</td></tr>
+                  )}
+                </tbody>
+                {owed.length > 0 && (
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} className="num"><b>মোট বকেয়া ({owed.length} জন)</b></td>
+                      <td className="num"><b>{money(total)}</b></td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+
+            <div className="es-foot">
+              <div className="es-foot-meta">
+                <div>তারিখ: {formatDate(new Date())}</div>
+                <div>মোবাইল: {HOTLINE}</div>
+              </div>
+              <div className="sheet-sign">
+                {signature && <img src={signature} alt="স্বাক্ষর" className="sig-img" />}
+                <div className="sheet-sign-line">পরিচালকের স্বাক্ষর</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="modal-foot" style={{ display: 'flex', gap: 10 }}>
+          <button className="btn" onClick={downloadPDF} disabled={!!busy} style={{ background: '#dc2626' }}>
+            {busy === 'pdf' ? 'তৈরি হচ্ছে…' : '📄 PDF ডাউনলোড'}
+          </button>
+          <button className="btn" onClick={downloadJPG} disabled={!!busy} style={{ background: '#16a34a' }}>
+            {busy === 'jpg' ? 'তৈরি হচ্ছে…' : '🖼 JPG ডাউনলোড'}
+          </button>
         </div>
       </div>
     </div>

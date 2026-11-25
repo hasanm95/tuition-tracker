@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import type { StudentDetail } from '@/lib/types';
 import { money, formatDate } from '@/lib/format';
 import { COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
+import { duePerMonth } from '@/lib/due';
 import { useSignature } from '@/lib/useSignature';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
 
@@ -14,11 +15,9 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
 
   const safeName = (student.name || 'student').replace(/[\\/:*?"<>|]/g, '').slice(0, 40);
 
-  // Latest deposit = total collected on the most recent payment date.
-  const lastDate = student.payments.reduce((d, p) => (p.paidOn > d ? p.paidOn : d), '');
-  const lastDeposit = student.payments
-    .filter((p) => p.paidOn === lastDate)
-    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  // Which months are still owed — the point of this slip for the guardian.
+  const pending = duePerMonth(student);
+  const dueTotal = pending.reduce((sum, m) => sum + m.due, 0);
 
   async function downloadJPG() {
     setBusy('jpg');
@@ -60,7 +59,7 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
             <div className="vc-head">
               <div className="vc-title">{COACHING_NAME}</div>
               <div className="vc-sub">{TAGLINE} | মোবাইল: {HOTLINE}</div>
-              <div className="vc-receipt">টাকা আদায় ভাউচার</div>
+              <div className="vc-receipt">বকেয়া বেতন বিবরণী</div>
             </div>
 
             <div className="vc-info">
@@ -75,36 +74,36 @@ export default function VoucherModal({ student, onClose }: { student: StudentDet
               )}
             </div>
 
+            <div className="vc-receipt-sub" style={{ textAlign: 'center', fontWeight: 700, margin: '4px 0 10px', color: '#b91c1c' }}>
+              যে মাসগুলোর বেতন বাকি আছে
+            </div>
             <table className="vc-table">
               <thead>
                 <tr>
                   <th>মাসের নাম</th>
-                  <th>মাসিক বেতন (৳)</th>
-                  <th>আদায়ের তারিখ</th>
-                  <th>আদায়কৃত টাকা (৳)</th>
+                  <th>ধার্য বেতন (৳)</th>
+                  <th>পরিশোধিত (৳)</th>
+                  <th>বকেয়া (৳)</th>
                 </tr>
               </thead>
               <tbody>
-                {student.payments.map((p, i) => (
-                  <tr key={p.id ?? i}>
-                    <td>{p.monthName || '—'}</td>
-                    <td>{p.targetFee ? money(p.targetFee) : '—'}</td>
-                    <td>{formatDate(p.paidOn)}</td>
-                    <td>{money(p.amount)}</td>
+                {pending.map((m) => (
+                  <tr key={m.month}>
+                    <td>{m.month}</td>
+                    <td>{money(m.fee)}</td>
+                    <td>{money(m.paid)}</td>
+                    <td>{money(m.due)}</td>
                   </tr>
                 ))}
-                {student.payments.length === 0 && (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', color: '#64748b' }}>কোনো জমা নেই</td></tr>
+                {pending.length === 0 && (
+                  <tr><td colSpan={4} style={{ textAlign: 'center', color: '#16a34a' }}>সব মাসের বেতন পরিশোধিত আছে ✅</td></tr>
                 )}
               </tbody>
             </table>
 
             <div className="vc-totals">
               <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
-              <div className="vc-tot due"><span>বকেয়া</span><b>{money(Math.max(0, student.due))}</b></div>
-              {lastDate && (
-                <div className="vc-tot last"><span>সর্বশেষ জমা ({formatDate(lastDate)})</span><b>{money(lastDeposit)}</b></div>
-              )}
+              <div className="vc-tot due"><span>মোট বকেয়া</span><b>{money(dueTotal)}</b></div>
             </div>
 
             <div className="vc-foot">
