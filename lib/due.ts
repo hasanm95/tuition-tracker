@@ -30,8 +30,9 @@ export function duePerMonth(student: StudentDetail): MonthDue[] {
   const sd = student.startDate ? new Date(student.startDate) : null;
   // Continuing students (joined a previous year) are owed from January.
   const startIdx = sd && !isNaN(sd.getTime()) && sd.getFullYear() >= ay ? sd.getMonth() : 0;
-  // Only charge up to the current month for the running year; a past year is full.
-  const endIdx = ay < now.getFullYear() ? 11 : ay > now.getFullYear() ? startIdx : now.getMonth();
+  // Only charge up to the current month for the running year; a past year is
+  // full; a future year has not started, so nothing is owed yet.
+  const endIdx = ay < now.getFullYear() ? 11 : ay > now.getFullYear() ? -1 : now.getMonth();
 
   const out: MonthDue[] = [];
   for (let i = startIdx; i <= endIdx; i++) {

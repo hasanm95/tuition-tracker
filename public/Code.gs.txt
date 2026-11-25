@@ -612,18 +612,23 @@ function getMonthlyReport(yr) {
   });
   yearStudents.forEach(function(s) { ids[String(s.id)] = true; });
 
+  // Stop accruing at the current month: a future month (e.g. December while it
+  // is still November) has not been taught yet, so it must show no target/due.
+  var now = new Date();
+  var yearCap = year < now.getFullYear() ? 11 : (year === now.getFullYear() ? now.getMonth() : -1);
+
   // Expected per month + how many studied that month.
   yearStudents.forEach(function(s) {
     var fee = Number(s.monthlyFee || 0);
     var sd = s.startDate ? new Date(s.startDate) : null;
     // Continuing students (joined a previous year) are counted from January.
     var startMonth = (sd && !isNaN(sd) && sd.getFullYear() >= year) ? sd.getMonth() : 0;
-    var endMonth = 11;
+    var endMonth = yearCap;
     if (s.status === 'অব্যাহতি প্রাপ্ত' && s.dischargeDate) {
       var dd = new Date(s.dischargeDate);
       if (!isNaN(dd)) {
         if (dd.getFullYear() < year) return;           // left before this year
-        if (dd.getFullYear() === year) endMonth = dd.getMonth();
+        if (dd.getFullYear() === year && dd.getMonth() < endMonth) endMonth = dd.getMonth();
       }
     }
     for (var m = startMonth; m <= endMonth; m++) {
