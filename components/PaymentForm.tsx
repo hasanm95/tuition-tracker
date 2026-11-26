@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import type { Payment } from '@/lib/types';
-import { todayLocal } from '@/lib/format';
+import { todayLocal, toYmd } from '@/lib/format';
+import { BN_MONTHS } from '@/lib/config';
 import { queueMutation } from '@/lib/syncQueue';
-
-const BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
 
 interface Props {
   studentId: string;
@@ -37,7 +36,8 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
   // month, and any "না পড়ানো" month in between is skipped.
   function nextUnpaidMonth(): string {
     const paid = new Set(paidMonths || []);
-    const startIdx = startDate ? new Date(startDate).getMonth() : 0;
+    const ymd = toYmd(startDate);
+    const startIdx = ymd ? Number(ymd.slice(5, 7)) - 1 : 0;
     for (let i = startIdx; i < 12; i++) {
       const m = BN_MONTHS[i];
       if (!paid.has(m) && !isHoliday(m)) return m;
@@ -107,11 +107,17 @@ export default function PaymentForm({ studentId, monthlyFee, monthFees, paidMont
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'পেমেন্ট রেকর্ড করা যায়নি।');
       }
-      // Advance to the next non-holiday month so the next deposit is pre-filled.
+      // Advance to the next unpaid non-holiday month within the same year
+      // (never wrap past ডিসেম্বর back to জানুয়ারি).
+      const paid = new Set([...(paidMonths || []), monthName]);
       const paidIdx = BN_MONTHS.indexOf(monthName);
-      let next = (paidIdx + 1) % 12;
-      while (next !== paidIdx && isHoliday(BN_MONTHS[next])) next = (next + 1) % 12;
-      onMonthChange(BN_MONTHS[next]);
+      for (let i = paidIdx + 1; i < 12; i++) {
+        const m = BN_MONTHS[i];
+        if (!paid.has(m) && !isHoliday(m)) {
+          onMonthChange(m);
+          break;
+        }
+      }
       setSuccess(true);
       onSuccess?.();
     } catch (err: any) {

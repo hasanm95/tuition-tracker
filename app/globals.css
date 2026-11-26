@@ -1149,12 +1149,13 @@ table.data td.center, table.data th.center { text-align: center; }
 .voucher .vc-table th { background: #eff6ff; color: #1d4ed8; text-align: center; padding: 8px 10px; border: 1px solid #e2e8f0; }
 .voucher .vc-table td { padding: 8px 10px; border: 1px solid #e2e8f0; text-align: center; }
 .voucher .vc-totals { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-.voucher .vc-tot { flex: 1; border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.voucher .vc-tot { flex: 1 1 200px; border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
 .voucher .vc-tot span { font-size: 15px; }
-.voucher .vc-tot b { font-size: 20px; }
+.voucher .vc-tot b { font-size: 20px; white-space: nowrap; }
+.voucher .vc-nowrap { white-space: nowrap; }
 .voucher .vc-tot.ok { background: #ecfdf5; color: #16a34a; }
 .voucher .vc-tot.due { background: #fef2f2; color: #dc2626; }
-.voucher .vc-tot.last { background: #eff6ff; color: #1d4ed8; }
+.voucher .vc-tot.last { background: #eff6ff; color: #1d4ed8; flex: 1 1 100%; }
 .voucher.framed { border: 2px dashed #94a3b8; border-radius: 16px; padding: 24px; }
 .voucher .vc-info { padding: 12px 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
 .voucher .vc-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 24px; padding-top: 12px; border-top: 2px dashed #cbd5e1; font-size: 15px; color: #334155; }

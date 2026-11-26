@@ -2,8 +2,8 @@
 
 import { useRef, useState } from 'react';
 import type { StudentDetail } from '@/lib/types';
-import { money, formatDate } from '@/lib/format';
-import { COACHING_NAME, TAGLINE, HOTLINE } from '@/lib/config';
+import { money, formatDate, toYmd } from '@/lib/format';
+import { COACHING_NAME, TAGLINE, HOTLINE, BN_MONTHS } from '@/lib/config';
 import { duePerMonth } from '@/lib/due';
 import { useSignature } from '@/lib/useSignature';
 import { captureSheet, sheetToPdf } from '@/lib/capture';
@@ -31,9 +31,20 @@ export default function VoucherModal({
   const pending = duePerMonth(student);
   const dueTotal = pending.reduce((sum, m) => sum + m.due, 0);
 
-  const lastDate = student.payments.reduce((d, p) => (p.paidOn > d ? p.paidOn : d), '');
+  // Chronological month order (জানুয়ারি → ডিসেম্বর, tie-broken by payment date).
+  const depositPayments = [...student.payments].sort((a, b) => {
+    const ma = BN_MONTHS.indexOf(a.monthName);
+    const mb = BN_MONTHS.indexOf(b.monthName);
+    if (ma !== -1 && mb !== -1 && ma !== mb) return ma - mb;
+    return toYmd(a.paidOn).localeCompare(toYmd(b.paidOn));
+  });
+
+  const lastDate = student.payments.reduce((d, p) => {
+    const ymd = toYmd(p.paidOn);
+    return ymd > d ? ymd : d;
+  }, '');
   const lastDeposit = student.payments
-    .filter((p) => p.paidOn === lastDate)
+    .filter((p) => toYmd(p.paidOn) === lastDate)
     .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   async function downloadJPG() {
@@ -112,7 +123,7 @@ export default function VoucherModal({
                     </tr>
                   </thead>
                   <tbody>
-                    {student.payments.map((p, i) => (
+                    {depositPayments.map((p, i) => (
                       <tr key={p.id ?? i}>
                         <td>{p.monthName || '—'}</td>
                         <td>{p.targetFee ? money(p.targetFee) : '—'}</td>
@@ -120,7 +131,7 @@ export default function VoucherModal({
                         <td>{money(p.amount)}</td>
                       </tr>
                     ))}
-                    {student.payments.length === 0 && (
+                    {depositPayments.length === 0 && (
                       <tr><td colSpan={4} style={{ textAlign: 'center', color: '#64748b' }}>কোনো জমা নেই</td></tr>
                     )}
                   </tbody>
@@ -130,7 +141,10 @@ export default function VoucherModal({
                   <div className="vc-tot ok"><span>মোট আদায়</span><b>{money(student.totalPaid)}</b></div>
                   <div className="vc-tot due"><span>মোট বকেয়া</span><b>{money(dueTotal)}</b></div>
                   {lastDate && (
-                    <div className="vc-tot last"><span>সর্বশেষ জমা ({formatDate(lastDate)})</span><b>{money(lastDeposit)}</b></div>
+                    <div className="vc-tot last">
+                      <span>সর্বশেষ জমা <span className="vc-nowrap">({formatDate(lastDate)})</span></span>
+                      <b>{money(lastDeposit)}</b>
+                    </div>
                   )}
                 </div>
               </>
